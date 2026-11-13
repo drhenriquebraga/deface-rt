@@ -106,6 +106,7 @@ function escreverCorte(ld, pixSlice, cols, rows, cfg) {
   const PULAR = new Set(['7FE00010', '00280106', '00280107', '00281052', '00281053',
     '00280100', '00280101', '00280102', '00280103', '00080008',
     '00120062', '00120063', '00120064', '00281054']);
+  if (cfg.atribuicaoPublica) PULAR.add('00082111');
 
   for (const chave of ld.ordem) {
     const el = ld.elems.get(chave);
@@ -133,6 +134,7 @@ function escreverCorte(ld, pixSlice, cols, rows, cfg) {
   ds.texto('00080008', 'CS', 'DERIVED\\SECONDARY\\DEFACED');
   ds.texto('00120062', 'CS', 'YES');
   ds.texto('00120063', 'LO', cfg.metodoTxt);
+  if (cfg.atribuicaoPublica) ds.texto('00082111', 'ST', cfg.atribuicaoPublica);
   ds.us('00280100', 16); ds.us('00280101', 16); ds.us('00280102', 15); ds.us('00280103', 1);
   ds.texto('00281052', 'DS', '0');
   ds.texto('00281053', 'DS', '1');

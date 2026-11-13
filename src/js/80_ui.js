@@ -4,13 +4,13 @@
 'use strict';
 
 const E = {
-  modalidade: 'CT', formato: 'dicom', semente: '',
+  modalidade: 'CT', formato: 'dicom', semente: '', fontePublica: false,
   vol: null, an: null, faixa: null, fundo: null,
-  resultados: new Map(), atual: null, pixAtual: null,
+  resultados: new Map(), atual: null, pixAtual: null, metodoEscolhido: null,
   cortes: { ax: 0, co: 0, sa: 0 },
   jan: 400, niv: 40, limiar: -400, yaw: 0, pitch: 0,
   ocupado: false, token: 0, tokens: { L: 0, R: 0 }, rec3L: null, rec3R: null,
-  exemplo: false, modalidadeExemplo: 'CT', licao: 0
+  exemplo: false, licao: 0
 };
 const $ = (id) => document.getElementById(id);
 
@@ -77,7 +77,7 @@ async function receber(lista, opcoes = {}) {
   if (E.ocupado) return false;
   E.ocupado = true;
   $('boasVindas').hidden = false; $('estudio').hidden = true;
-  E.vol = null; E.atual = null; E.pixAtual = null; E.resultados.clear();
+  E.vol = null; E.atual = null; E.pixAtual = null; E.metodoEscolhido = null; E.resultados.clear(); E.fontePublica = false;
   E.tokens.L++; E.tokens.R++;
   $('RmprEmpty').style.display = 'flex';
   $('revisaoConfirmada').checked = false;
@@ -103,6 +103,7 @@ async function receber(lista, opcoes = {}) {
     msgR('Montando o volume…');
     const vol = await montarVolume(brutos, (t, m) => { prog(0.2 + t * 0.45); if (m) LOG.info(m); });
     E.vol = vol;
+    E.fontePublica = !!opcoes.exemplo || vol.refLeitor.txt('00082111').includes('10.6084/m9.figshare.8857007.v2');
 
     const modDICOM = (vol.modalidade || '').toUpperCase();
     const esperado = E.modalidade;
@@ -139,18 +140,16 @@ async function receber(lista, opcoes = {}) {
     E.cortes = { ax: E.an.sNose, co: Math.round(E.an.aNose - 40 / vol.mapa.mmA), sa: E.an.lNose };
     ajustarPreset(true);
     prepararSliders();
-    E.resultados.clear(); E.atual = null; E.pixAtual = null;
-    $('selMet').innerHTML = '<option>—</option>'; $('selMet').disabled = true; $('btnDl').disabled = true;
+    invalidarResultado('Os dois painéis mostram o original. Clique em um card para aplicar um método.');
     $('LmprEmpty').style.display = 'none';
     $('srcInfo').textContent = vol.nz + ' cortes · ' + (vol.modalidade || E.modalidade);
-    msgR('Escolha os métodos e clique em Processar.');
+    msgR('Escolha um card. Cada método parte sempre da imagem original.');
     prog(0);
 
     E.exemplo = !!opcoes.exemplo;
-    $('tipoEstudo').textContent = E.exemplo ? 'Fantoma sintético — não é exame de paciente' : 'Série local — confira a modalidade e a geometria';
+    $('tipoEstudo').textContent = E.exemplo ? 'TC real · Pat8 · publicação facial consentida pelos participantes · CC BY 4.0' : 'Série local — confira a modalidade e a geometria';
     $('btnBaixarExemplo').hidden = !E.exemplo;
     $('boasVindas').hidden = true; $('estudio').hidden = false;
-    $('detMetodos').open = true;
     marcarEtapa('etapaRevisar');
     montarTabelaOrigem();
     await mostrarVista('d3');
@@ -165,22 +164,25 @@ async function receber(lista, opcoes = {}) {
 }
 
 /* --------------------------------------------------------- processamento */
-async function processar() {
+async function processar(id) {
   if (E.ocupado || !E.vol) return;
-  const ids = [...document.querySelectorAll('#checks input:checked')].map((c) => c.value);
-  if (!ids.length) { LOG.aviso('Marque pelo menos um método.'); msgR('Selecione pelo menos um método em Comparar métodos.'); return; }
+  const met = METODOS.find(m => m.id === id);
+  if (!met) return;
+  const card = $('methodCards').querySelector('[data-metodo="' + id + '"]');
+  const devolverFoco = document.activeElement === card;
   E.ocupado = true;
-  $('revisaoConfirmada').checked = false;
-  E.resultados.clear(); E.atual = null; E.pixAtual = null;
+  invalidarResultado('Aplicando ' + met.nome + ' à imagem original…');
+  E.metodoEscolhido = id;
   atualizarControles();
   marcarEtapa('etapaRevisar');
-  $('RmprEmpty').style.display = 'flex';
-
   const semente = ($('seed').value || '').trim() || sementeAleatoria();
   $('seed').value = semente; E.semente = semente;
   LOG.destaque('Semente: ' + semente);
 
   try {
+    // O original fica visível enquanto a nova comparação é calculada.
+    desenharMPR('R');
+    await desenhar3D('R');
     // O limiar também define a máscara e a superfície usadas pelos métodos.
     // Uma mudança no visor exige nova análise antes de produzir uma saída.
     if (!E.an || E.an.limiar !== E.limiar) {
@@ -192,46 +194,38 @@ async function processar() {
       if (E.an.suspeito) LOG.aviso('Os marcos ficaram fora do esperado com este limiar. Confira a geometria.');
       montarNotaGeometria();
     }
-    for (let i = 0; i < ids.length; i++) {
-      const id = ids[i];
-      const met = METODOS.find((m) => m.id === id);
-      msgR(met.nome + ' — ' + (i + 1) + '/' + ids.length);
-      LOG.info('Aplicando ' + met.nome + '…');
-      const t0 = performance.now();
+    msgR('Aplicando ' + met.nome + ' à imagem original…');
+    LOG.info('Aplicando somente ' + met.nome + ' ao volume original…');
+    const t0 = performance.now();
 
       const delta = await aplicarMetodo(E.vol, E.an, E.faixa, id,
         { fundo: E.fundo, semente, desloc: 0 },
-        (t) => prog((i + t * 0.7) / ids.length));
+        (t) => prog(0.15 + t * 0.65));
 
       const pixMod = materializar(E.vol, delta);
-      prog((i + 0.8) / ids.length);
+      prog(0.85);
       await cede();
       const M = medir(E.vol, E.an, E.faixa, pixMod, delta);
       const V = veredito(id, M);
       E.resultados.set(id, { delta, M, V, met });
       LOG.ok(met.nome + ': RMS ' + nf(M.rms, 1) + ' mm · ' + nf(M.preservada, 0) +
         '% da face a menos de 2 mm · ' + nf((performance.now() - t0) / 1000, 1) + ' s');
-      prog((i + 1) / ids.length);
+      prog(1);
       await cede();
-    }
-
-    const sel = $('selMet');
-    sel.innerHTML = '';
-    for (const id of ids) {
-      const o = document.createElement('option');
-      o.value = id; o.textContent = METODOS.find((m) => m.id === id).nome;
-      sel.appendChild(o);
-    }
-    sel.disabled = false; $('btnDl').disabled = false;
     $('RmprEmpty').style.display = 'none';
-    await selecionar(ids[0]);
-    $('detMetodos').open = false;
-    msgR('Compare os resultados e explore os cabeçalhos e a geometria.');
+    await selecionar(id);
+    $('methodStatus').textContent = met.nome + ': ' + METODO_AULA[id].licao;
+    msgR('Compare com o original. Outro card substitui este método, sem acumular efeitos.');
     await mostrarVista('d3');
-    LOG.destaque('Concluído — ' + ids.length + ' método(s). Use o seletor para comparar.');
+    LOG.destaque('Concluído — somente ' + met.nome + '. Escolha outro card para comparar.');
   } catch (e) {
+    invalidarResultado('Não foi possível aplicar o método. Escolha um card para tentar novamente.');
+    desenharMPR('R'); await desenhar3D('R');
     LOG.erro(e.message); msgR(e.message);
-  } finally { E.ocupado = false; atualizarControles(); prog(0); }
+  } finally {
+    E.ocupado = false; atualizarControles(); prog(0);
+    if (devolverFoco) card.focus({ preventScroll: true });
+  }
 }
 
 async function selecionar(id) {
@@ -240,7 +234,7 @@ async function selecionar(id) {
   E.atual = id;
   $('revisaoConfirmada').checked = false;
   atualizarControles();
-  $('selMet').value = id;
+  E.metodoEscolhido = id;
   E.pixAtual = materializar(E.vol, r.delta);
   $('rmprTag').textContent = r.met.nome;
   $('rd3tag').textContent = r.met.nome;
@@ -353,6 +347,7 @@ function montarTabelaResultado() {
   tb.innerHTML = '';
   if (!E.aud) return;
   const r = E.resultados.get(E.atual);
+  if (!r) return;
   const cfg = identidadeDaEntrega(r);
   const fix = [
     ['(0010,0010)', 'Nome do paciente', cfg.nomePseudo, 'substituído'],
@@ -365,6 +360,7 @@ function montarTabelaResultado() {
     ['(0008,0018)', 'Instância SOP', '‹novo por corte›', 'novo identificador'],
     ['(0020,0052)', 'Referencial de coordenadas', '‹novo identificador›', 'novo identificador']
   ];
+  if (E.fontePublica) fix.push(['(0008,2111)', 'Fonte pública e licença', ATRIBUICAO_DICOM_PUBLICO, 'crédito preservado']);
   for (const [t, n, v, a] of fix) {
     const tr = document.createElement('tr');
     tr.innerHTML = '<td class="tag">' + t + '</td><td class="nm">' + n +
@@ -459,7 +455,7 @@ function identidadeDaEntrega(resultado) {
   return {
     nomePseudo: 'ANONIMO^DEFACE^RT',
     idPseudo: 'DFRT-' + (E.semente || '').replace(/-/g, '').slice(0, 9),
-    metodoTxt: 'DeFace RT ' + APP.versao + ' / DICOM PS3.15 perfil basico / ' + (resultado ? resultado.met.nome : '')
+    metodoTxt: 'DeFace RT ' + APP.versao + ' / ' + (resultado ? resultado.met.nome : '')
   };
 }
 
@@ -471,6 +467,7 @@ async function entregar() {
     const uids = new MapaUID();
     const cfg = {
       uids, modalidade: E.modalidade,
+      atribuicaoPublica: E.fontePublica ? ATRIBUICAO_DICOM_PUBLICO : '',
       ...identidadeDaEntrega(r)
     };
     const pix = E.pixAtual || materializar(E.vol, r.delta);
@@ -505,6 +502,10 @@ async function entregar() {
     itens.push({
       nome: base + '/LEIAME.txt',
       dados: new TextEncoder().encode(leiame(cfg, r.met, r.M, E.aud))
+    });
+    if (E.fontePublica) itens.push({
+      nome: base + '/FONTE_LICENCA_E_CONSENTIMENTO.txt',
+      dados: new TextEncoder().encode('A preparação descrita abaixo refere-se ao caso de origem, antes do método.\n\n' + CREDITO_CASO_PUBLICO + '\nAdaptação desta entrega: ' + r.met.nome + ', com alteração dos pixels pela demonstração.\n')
     });
     const blob = montarZIP(itens);
     baixar(blob, base + '.zip');
@@ -599,16 +600,7 @@ function iniciar() {
   LOG.destaque('DeFace RT ' + APP.versao + ' — pronto. O processamento é inteiro deste navegador.');
   verificarIsolamento();
 
-  const cont = $('checks');
-  const marcados = new Set(['plano']);
-  for (const m of METODOS) {
-    const lb = document.createElement('label');
-    lb.className = 'chk';
-    lb.innerHTML = '<input type="checkbox" value="' + m.id + '"' + (marcados.has(m.id) ? ' checked' : '') + '>' +
-      '<span>' + m.nome + '</span>';
-    lb.title = m.desc;
-    cont.appendChild(lb);
-  }
+  montarCardsMetodos();
 
   $('segMod').onclick = (e) => {
     const b = e.target.closest('button'); if (!b) return;
@@ -645,10 +637,16 @@ function iniciar() {
     if (arqs.length) { $('dropTxt').innerHTML = '<b>' + arqs.length + '</b> arquivo(s)'; receber(arqs); }
   });
 
-  $('btnRun').onclick = processar;
   $('btnDl').onclick = entregar;
-  $('selMet').onchange = (e) => selecionar(e.target.value);
-  $('btnSeed').onclick = () => { $('seed').value = sementeAleatoria(); };
+  const mudarSemente = () => {
+    if (E.ocupado) return;
+    const tinhaResultado = !!E.atual;
+    invalidarResultado('A semente mudou. Escolha um card para gerar uma nova comparação.');
+    if (E.vol && tinhaResultado) { desenharMPR('R'); desenhar3D('R'); }
+    atualizarControles();
+  };
+  $('btnSeed').onclick = () => { if (E.ocupado) return; $('seed').value = sementeAleatoria(); mudarSemente(); };
+  $('seed').oninput = mudarSemente;
   $('seed').value = sementeAleatoria();
 
   for (const [lado, tabs] of [['L', 'tabsL'], ['R', 'tabsR']]) {
@@ -677,14 +675,9 @@ function iniciar() {
     const novoLimiar = +e.target.value;
     if (novoLimiar === E.limiar) return;
     E.limiar = novoLimiar; $('vThr').textContent = e.target.value;
-    E.resultados.clear(); E.atual = null; E.pixAtual = null; E.tokens.R++;
-    $('revisaoConfirmada').checked = false;
-    $('selMet').innerHTML = '<option>Processe com o novo limiar</option>';
-    $('rmprTag').textContent = ''; $('rd3tag').textContent = '';
-    $('tblHdrR').querySelector('tbody').innerHTML = '';
-    $('metrics').innerHTML = ''; $('metNote').innerHTML = '';
-    $('RmprEmpty').style.display = 'flex';
-    msgR('O limiar mudou. Processe novamente para recalcular a superfície e os resultados.');
+    invalidarResultado('O limiar mudou. Escolha um card para recalcular o método sobre o original.');
+    desenharMPR('R'); desenhar3D('R');
+    msgR('O limiar mudou. Escolha um card para recalcular a superfície e o resultado.');
     marcarEtapa('etapaRevisar'); montarNotaGeometria(); atualizarControles();
   };
   $('thr').onchange = () => desenharTudo();
@@ -737,8 +730,49 @@ function iniciar() {
 const LICOES = [
   { titulo: 'Olhar é o primeiro passo.', texto: 'Gire a reconstrução e compare os métodos. Uma face menos reconhecível não prova que o exame se tornou anônimo.', vista: 'd3', botao: 'Investigar cabeçalhos →' },
   { titulo: 'O nome não é o único identificador.', texto: 'Compare o cabeçalho original com o derivado. Veja o que foi removido e os quase-identificadores que permanecem. Texto gravado nos pixels exige revisão própria.', vista: 'hdr', botao: 'Medir a geometria →' },
-  { titulo: 'Mudança de forma não prova anonimização.', texto: 'Leia o deslocamento e a fração de superfície preservada. A cabeça é modelada em 3D, com tecidos simulados; seu realismo visual não valida resultados em pacientes.', vista: 'met', botao: 'Voltar à imagem →' }
+  { titulo: 'Mudança de forma não prova anonimização.', texto: 'Leia o deslocamento e a fração de superfície preservada. Este caso real permite explorar diferenças; um exemplo isolado não valida eficácia de anonimização.', vista: 'met', botao: 'Voltar à imagem →' }
 ];
+const METODO_AULA = {
+  plano: { resumo: 'Remove a face por um plano de corte.', licao: 'observe a borda reta e a anatomia retirada em bloco.' },
+  recorte: { resumo: 'Retira uma camada da região facial.', licao: 'compare a região removida com o contorno que ainda permanece.' },
+  ruido: { resumo: 'Substitui a camada facial por ar com ruído.', licao: 'compare a borda irregular com o recorte sem ruído.' },
+  suave: { resumo: 'Desfoca a face; o contorno pode permanecer.', licao: 'perceba por que perder nitidez não garante perder a identidade.' },
+  generica: { resumo: 'Troca o contorno por uma face paramétrica.', licao: 'observe a forma substituída e os traços que continuam no volume.' }
+};
+function montarCardsMetodos() {
+  const grupo = $('methodCards');
+  for (const [i, metodo] of METODOS.entries()) {
+    const botao = document.createElement('button');
+    botao.type = 'button'; botao.className = 'method-card'; botao.dataset.metodo = metodo.id;
+    botao.setAttribute('role', 'radio'); botao.setAttribute('aria-checked', 'false'); botao.tabIndex = i ? -1 : 0;
+    botao.innerHTML = '<strong>' + esc(metodo.nome) + '</strong><span>' + esc(METODO_AULA[metodo.id].resumo) + '</span>';
+    botao.onclick = () => processar(metodo.id);
+    grupo.appendChild(botao);
+  }
+  grupo.onkeydown = e => {
+    if (E.ocupado || !E.vol || !e.target.matches('button[data-metodo]')) return;
+    if (!['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key)) return;
+    e.preventDefault();
+    const cards = [...grupo.querySelectorAll('button[data-metodo]')];
+    const i = cards.indexOf(e.target);
+    const passo = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : -1;
+    const destino = e.key === 'Home' ? 0 : e.key === 'End' ? cards.length - 1 : (i + passo + cards.length) % cards.length;
+    cards[destino].focus(); processar(cards[destino].dataset.metodo);
+  };
+  atualizarControles();
+}
+function invalidarResultado(mensagem) {
+  E.resultados.clear(); E.atual = null; E.metodoEscolhido = null;
+  E.pixAtual = E.vol ? E.vol.pix : null; E.tokens.R++;
+  $('revisaoConfirmada').checked = false;
+  $('rmprTag').textContent = 'Original — escolha um método';
+  $('rd3tag').textContent = 'Original — escolha um método';
+  $('tblHdrR').querySelector('tbody').innerHTML = '';
+  $('metrics').innerHTML = '<p class="method-empty">Escolha um card para ver as medidas de um método.</p>';
+  $('metNote').innerHTML = '';
+  $('RmprEmpty').style.display = E.vol ? 'none' : 'flex';
+  $('methodStatus').textContent = mensagem;
+}
 function marcarEtapa(id) {
   for (const nome of ['etapaImportar', 'etapaRevisar', 'etapaExportar']) {
     if (nome === id) $(nome).setAttribute('aria-current', 'step');
@@ -747,10 +781,17 @@ function marcarEtapa(id) {
 }
 function atualizarControles() {
   for (const id of ['btnExemplo', 'btnPasta', 'btnArqs', 'btnNovo', 'btnBaixarExemplo']) $(id).disabled = E.ocupado;
-  $('btnRun').disabled = E.ocupado || !E.vol;
   $('btnDl').disabled = E.ocupado || !E.atual || !$('revisaoConfirmada').checked;
-  $('selMet').disabled = E.ocupado || !E.atual;
-  for (const el of document.querySelectorAll('#segMod button, #segExemplo button, #segFmt button, #checks input, #seed, #btnSeed, #thr')) el.disabled = E.ocupado;
+  const selecionado = E.atual || E.metodoEscolhido;
+  for (const [i, card] of [...$('methodCards').querySelectorAll('button')].entries()) {
+    const ativo = card.dataset.metodo === selecionado;
+    card.setAttribute('aria-checked', String(ativo));
+    card.setAttribute('aria-busy', String(ativo && E.ocupado));
+    card.tabIndex = selecionado ? (ativo ? 0 : -1) : (i ? -1 : 0);
+    card.disabled = E.ocupado || !E.vol;
+  }
+  $('revisaoConfirmada').disabled = E.ocupado || !E.atual;
+  for (const el of document.querySelectorAll('#segMod button, #segFmt button, #seed, #btnSeed, #thr')) el.disabled = E.ocupado;
   $('drop').setAttribute('aria-disabled', String(E.ocupado));
   $('estudio').setAttribute('aria-busy', String(E.ocupado));
 }
@@ -785,19 +826,17 @@ async function explorarExemplo() {
   if (E.ocupado) return;
   E.ocupado = true; atualizarControles();
   $('statusInicio').classList.remove('error');
-  msgR('Construindo a cabeça sintética e os cortes neste navegador…');
+  msgR('Abrindo a TC pública neste navegador…');
   try {
-    E.modalidade = E.modalidadeExemplo;
+    E.modalidade = 'CT';
     E.yaw = 30; E.pitch = 0;
     $('yaw').value = 30; $('vYaw').textContent = '30°';
     $('pit').value = 0; $('vPit').textContent = '0°';
     for (const b of $('segMod').children) b.setAttribute('aria-pressed', String(b.dataset.mod === E.modalidade));
-    const arquivos = await gerarCasoSintetico(E.modalidade);
+    const arquivos = await carregarCasoPublico();
     E.ocupado = false;
     if (!await receber(arquivos, { exemplo: true })) return;
-    for (const c of document.querySelectorAll('#checks input')) c.checked = true;
     $('seed').value = 'AULA-DEFACE-2026';
-    await processar();
     definirLicao(0);
   } catch (e) {
     LOG.erro('Não foi possível preparar o exemplo: ' + e.message);
@@ -807,11 +846,6 @@ async function explorarExemplo() {
 }
 function ligarAprendizado() {
   $('btnExemplo').onclick = explorarExemplo;
-  $('segExemplo').onclick = (e) => {
-    const b = e.target.closest('button'); if (!b || E.ocupado) return;
-    E.modalidadeExemplo = b.dataset.mod;
-    for (const x of $('segExemplo').children) x.setAttribute('aria-pressed', String(x === b));
-  };
   $('btnNovo').onclick = () => {
     if (E.ocupado) return;
     $('estudio').hidden = true; $('boasVindas').hidden = false;
@@ -832,17 +866,25 @@ function ligarAprendizado() {
   $('revisaoConfirmada').onchange = atualizarControles;
   $('btnBaixarExemplo').onclick = async () => {
     if (E.ocupado || !E.exemplo) return;
-    E.ocupado = true; atualizarControles(); msgR('Preparando o caso sintético original…');
+    E.ocupado = true; atualizarControles(); msgR('Preparando a TC pública com os créditos da fonte…');
     try {
-      const blob = await montarZIPExemplo(E.modalidade);
-      baixar(blob, 'DeFace_RT_Exemplo_' + E.modalidade + '_SINTETICO.zip');
-      msgR('Caso sintético original entregue. Reabra o ZIP para testar a importação.');
+      const blob = await montarZIPCasoPublico();
+      baixar(blob, 'DeFace_RT_MAR_PAT8_CT_PUBLICA.zip');
+      msgR('TC pública entregue com fonte e licença. Reabra o ZIP para testar a importação.');
     } catch (e) { LOG.erro(e.message); msgR('Falha ao preparar o caso original. Tente novamente.'); }
     finally { E.ocupado = false; atualizarControles(); }
   };
 }
 
 const TEXTO_SOBRE = `
+<div><h5>O caso real desta aula</h5>
+TC do caso Pat8 da Medical Augmented Reality Facial Data Collection, v2,
+de Egger, Gsaxner e Wallner (2019), sob CC BY 4.0.
+O artigo da coleção declara consentimento dos participantes para publicar os dados identificáveis e modelos faciais 3D.
+Este app usa um recorte de face e pescoço, sem reamostrar ou criar pixels. O recorte não inclui a calota superior.
+Os cabeçalhos DICOM são recriados para a conversão; PUBLICO^PAT8 é um rótulo didático, não o nome da pessoa. Nenhuma associação ou endosso é sugerido.
+<p class="source-url">Dados: https://doi.org/10.6084/m9.figshare.8857007.v2<br>Artigo e consentimento: https://pmc.ncbi.nlm.nih.gov/articles/PMC6901520/<br>Licença: https://creativecommons.org/licenses/by/4.0/</p>
+Referências: Gsaxner et al., Scientific Data 6:310, doi:10.1038/s41597-019-0327-8; MICCAI 2019, doi:10.1007/978-3-030-32254-0_27.</div>
 <div><h5>O que este aplicativo faz</h5>
 Carrega uma série DICOM de TC ou RM de crânio, aplica regras de limpeza de cabeçalho orientadas pelo
 Perfil Básico de Confidencialidade (DICOM PS3.15, Anexo E), aplica métodos de desfiguração ao pixel

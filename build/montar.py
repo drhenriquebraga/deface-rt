@@ -24,7 +24,7 @@ APPS = {
     'dicom': {
         'raiz': 'src',
         'modulos': ['10_core.js', '20_dict.js', '30_dicom.js', '40_volume.js',
-                    '50_deface.js', '60_render.js', '70_write.js', '74_anatomia.js', '75_exemplos.js', '80_ui.js'],
+                    '50_deface.js', '60_render.js', '70_write.js', '76_caso_publico_dados.js', '77_caso_publico.js', '80_ui.js'],
         'saida': 'DeFace_RT.html',
         'abas': {l + v for l in 'LR' for v in ('mpr', 'd3', 'hdr', 'met')},
     },
@@ -143,10 +143,10 @@ def montar(nome, validar):
         licencas.append('<h2>' + fonte + '</h2><pre>' +
                         escape(open(caminho, encoding='utf-8-sig').read()) + '</pre>')
     if nome == 'dicom':
-        caminho = os.path.join(RAIZ, 'LICENSES', 'CC0-MakeHuman.txt')
+        caminho = os.path.join(RAIZ, 'LICENSES', 'CC-BY-4.0.txt')
         if not os.path.exists(caminho):
-            falhar('licenca da superficie sintetica ausente: CC0-MakeHuman.txt')
-        licencas.append('<h2>MakeHuman — superfície sintética CC0</h2><pre>' +
+            falhar('licenca da TC publica ausente: CC-BY-4.0.txt')
+        licencas.append('<h2>Medical Augmented Reality Facial Data Collection — CC BY 4.0</h2><pre>' +
                         escape(open(caminho, encoding='utf-8-sig').read()) + '</pre>')
     html = html.replace('</body>', '<template id="licencasFontes">' +
                         ''.join(licencas) + '</template>\n</body>')

@@ -95,11 +95,48 @@ não reproduzem os testes de reconhecimento facial desses artigos.
 Os endereços DICOM com `current` acompanham a edição vigente; a edição acima
 registra o que foi consultado nesta conferência.
 
+## Fonte da TC real e autorização de publicação facial
+
+O caso didático inicial é **Pat11**, da coleção abaixo. A versão 1.5.0 usa
+um recorte dos pixels reais, sem reamostragem, e cabeçalhos de conversão.
+O dado permanece sob CC BY 4.0; a licença MIT do código não o relicencia.
+
+- **Egger J, Gsaxner C, Wallner J.** *Medical Augmented Reality Facial Data
+  Collection.* Figshare; 2019, versão 2.
+  DOI: [10.6084/m9.figshare.8857007.v2](https://doi.org/10.6084/m9.figshare.8857007.v2).
+  É o dataset de TC/PET e modelos faciais, sob
+  [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+
+- **Gsaxner C, Wallner J, Chen X, Zemann W, Egger J.** *Facial model collection
+  for medical augmented reality in oncologic cranio-maxillofacial surgery.*
+  **Scientific Data**. 2019;6:310. DOI:
+  [10.1038/s41597-019-0327-8](https://doi.org/10.1038/s41597-019-0327-8).
+  [Texto integral](https://pmc.ncbi.nlm.nih.gov/articles/PMC6901520/).
+  A seção *Data Records*, após a Tabela 2, declara consentimento de todos os
+  pacientes selecionados antes da publicação e reconhece dados identificáveis,
+  incluindo as faces 3D. A declaração não se restringe ao exemplo da Figura 2.
+  A coleção tem 12 casos; não foram obtidos novos termos individuais pelo
+  DeFace RT. Esta é a evidência pública de autorização usada para o exemplo.
+
+- **Gsaxner C, Pepe A, Wallner J, Schmalstieg D, Egger J.** *Markerless
+  Image-to-Face Registration for Untethered Augmented Reality in Head and Neck
+  Surgery.* In: **MICCAI 2019**. p. 236–244. DOI:
+  [10.1007/978-3-030-32254-0_27](https://doi.org/10.1007/978-3-030-32254-0_27).
+  [Registro institucional](https://tugraz.elsevierpure.com/en/publications/markerless-image-to-face-registration-for-untethered-augmented-re/).
+  Referência adicional solicitada pelos autores do dataset; o método de
+  registro desse trabalho não está implementado no DeFace RT.
+
+Preservar esses créditos, a licença e a indicação das alterações nas cópias
+e nos derivados. Atribuição não implica associação ou endosso dos autores.
+Não confundir o dataset **8857007** com o registro **11284757**, que contém
+metadados do artigo. A autorização facial é documentada pelo estudo; não
+foi inferida apenas da existência de uma licença aberta.
+
 ## Licenças e exemplos
 
 O código do motor é próprio, mas o pacote também contém fontes tipográficas e
 amostras públicas com atribuições específicas. As licenças estão em
 [LICENSES/LEIAME.md](../LICENSES/LEIAME.md). A origem, licença, revisão e
-limitações dos fantomas sintéticos estão em
-[exemplos/LEIAME.md](../exemplos/LEIAME.md). Esses materiais de teste não
-constituem validação clínica dos métodos.
+limitações do caso real e dos fantomas sintéticos auxiliares estão em
+[exemplos/LEIAME.md](../exemplos/LEIAME.md). Esses materiais de ensino e teste
+não constituem validação clínica dos métodos.

@@ -1,34 +1,74 @@
-# Validacao da versao 1.4.1
+# Validação da versão 1.5.0
 
-Esta versao usa somente casos sinteticos nos testes. As evidencias verificam
-comportamentos de software; nao validam eficacia de desidentificacao nem uso
-clinico. Nao constituem garantia de ausencia absoluta de segredos.
+Esta versão inclui uma TC real de banco público com licença CC BY 4.0 e
+consentimento para publicação facial declarado pelos pesquisadores, além
+de casos sintéticos auxiliares. As evidências verificam comportamento de
+software e integridade da adaptação; não validam eficácia de desidentificação
+nem uso clínico.
 
-## Escopo de verificacao
+## Escopo de verificação
 
-- Banco DICOM original: orientacao, cinco metodos, sementes, parser de
-  sequencias aninhadas e ida/volta de escrita.
-- Banco Data: identificadores, preservacao de vocabulario, reversibilidade,
-  nomes e formatos de texto.
-- Exemplos novos: TC/RM em DICOM, cinco metodos, metadados ficticios, tags
-  privadas, determinismo, NIfTI e anotacao ficticia que permanece nos pixels.
-- Cabeca modelada: 192 x 224 x 256 voxels de 1 mm, malha MakeHuman CC0,
-  proveniencia e hash fixados, tecidos simulados e renderizacao subvoxel.
-- Casos publicos: origem fixada, hashes de 88 arquivos, campos de texto
-  esperados, ausencia de tags privadas e sequencias, volume e pixels.
-- Limites: recusa de pixels unsigned fora de int16, multiquadro e JPEG DRI.
-- Navegador Chromium: inicio, TC/RM, 3D e cortes, cabecalhos, metricas,
-  downloads DICOM/NIfTI, reimportacao, revisao, erros, teclado, mobile e CSP.
-- Navegador Data: texto de exemplo, revisao, resposta simulada e restauracao,
-  copia, invalidacao de saidas, limpeza do mapa, teclado e mobile.
+A lista abaixo delimita o que deve ser conferido. Ela não é, por si só,
+uma declaração de execução ou aprovação: os resultados dependem dos logs
+e relatórios datados da entrega correspondente.
 
-Os logs da execucao final e a auditoria da publicacao acompanham o pacote.
-Nao foram testados todos os codecs, fabricantes, scanners ou navegadores.
+- **Caso real Pat8:** fonte e licença fixadas, evidência pública de
+  consentimento, hashes do arquivo e dos pixels, cabeçalho NRRD permitido e
+  recorte de 208 × 260 × 53 voxels. Conferir igualdade com os pixels de origem,
+  sem reamostragem; preservar espaçamento de 0,976562 × 0,976562 × 3,0 mm e
+  registrar que o recorte não inclui a calota superior.
+- **Metadados do exemplo real:** conferir cabeçalhos de conversão e
+  proveniência, ausência de importação de nomes e cabeçalhos clínicos originais,
+  leitura DICOM e coerência de coordenadas, modalidade e intensidades.
+- **Cards excludentes:** caso abre sem método executado; cinco cards visíveis;
+  um clique executa somente o escolhido. Selecionar outro substitui o resultado
+  e parte do original, sem acumular efeitos. Ausência de dropdown, seleção
+  múltipla e execução em lote; acesso por teclado e estados de processamento.
+- **Revisão e exportação:** mudança de card, limiar ou ajustes invalida a saída
+  ou a revisão conforme o estado; download só após revisão. Conferir DICOM,
+  reimportação, NIfTI e identidade entre o resultado mostrado e o exportado.
+- **Banco DICOM:** orientação, cinco métodos individuais, sementes, sequências
+  aninhadas e ida/volta de escrita. Recusa de unsigned fora de int16,
+  multiquadro e JPEG com DRI nos caminhos não suportados.
+- **Renderização:** superfície subvoxel, estruturas finas, anisotropia,
+  orientação invertida, plano, degrau, volume cortado e ar puro; a renderização
+  não deve alterar pixels. Original/Resultado devem ter a mesma escala visual.
+- **Sintéticos auxiliares:** TC/RM de cabeça modelada, metadados fictícios,
+  tags privadas, determinismo, cinco métodos individuais e anotação fictícia
+  que permanece nos pixels depois de limpar cabeçalhos.
+- **Fantomas públicos CBCTsynth-RT:** revisão e hashes dos 88 arquivos,
+  campos esperados, ausência de tags privadas e sequências inesperadas.
+- **Navegador DICOM:** TC real inicial, cortes/3D, cinco cards, cabeçalhos,
+  medidas, erros de entrada, revisão, exportação, reimportação, desktop/mobile,
+  foco e teclado. URLs das fontes ficam como texto selecionável; o aplicativo
+  não as abre nem consulta automaticamente.
+- **Data:** texto fictício, identificadores, preservação de vocabulário,
+  formatos, revisão, restauração simulada, cópia, invalidação e limpeza do
+  mapa; teclado e telas estreitas.
+- **Isolamento e publicação:** CSP, ausência de envio de dados do usuário,
+  autoteste bloqueado de isolamento, licenças, manifesto, conteúdo e histórico
+  a publicar. Depois do deploy, conferir URLs e hashes servidos.
 
-## Problemas anteriores tratados nesta versao
+Logs de navegador e bancos ficam em `dist/qa`. O pacote de entrega e a
+auditoria da publicação registram as evidências efetivamente incluídas.
+Não foram cobertos todos os codecs, fabricantes, scanners ou navegadores.
 
-O leitor antigo convertia unsigned alto para int16 incorretamente e o JPEG
-com DRI nao reinicializava corretamente a predicao. Estes caminhos agora
-interrompem a importacao com explicacao, sem exportar pixels corrompidos.
-O DICOM deflacionado com preenchimento adicional continua uma limitacao
-declarada; o programa orienta reexportar sem compressao.
+Execução em 13/11/2026 para a versão 1.5.0: os bancos automatizados e o
+fluxo Chromium DICOM passaram, incluindo cinco escolhas exclusivas, entrada
+TC real/RM sintética, DICOM/NIfTI, créditos nos ZIPs exportados, atribuição
+na reimportação e viewport de 390 px. A auditoria estática passou nas 41
+verificações, sem falhas ou avisos. O caso real também passou pela conferência
+independente de todos os pixels e dos 53 cabeçalhos preparados.
+
+## Limites conhecidos
+
+O exemplo real é um recorte e não inclui toda a cabeça. Não se completaram
+partes ausentes nem se substituíram tecidos por formas sintéticas. Pequenos
+segmentos do apoio posterior permanecem no volume. Esses fatores podem
+afetar os marcos automáticos e a interpretação das medidas.
+
+O leitor recusa formatos não suportados em vez de exportar silenciosamente
+valores incompatíveis com int16. O DICOM deflacionado com preenchimento
+adicional continua uma limitação declarada; o programa orienta reexportar
+sem compressão. Uma reconstrução visual ou teste funcional aprovado não
+constitui validação clínica ou garantia de anonimato.

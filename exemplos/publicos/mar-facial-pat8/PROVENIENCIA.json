@@ -1,0 +1,115 @@
+{
+  "caso": "Pat8",
+  "tipo": "TC real de paciente, fonte pública com consentimento publicado para dados faciais identificáveis",
+  "colecao": "Medical Augmented Reality Facial Data Collection",
+  "autores": [
+    "Jan Egger",
+    "Christina Gsaxner",
+    "Jürgen Wallner"
+  ],
+  "ano": 2019,
+  "doi": "10.6084/m9.figshare.8857007.v2",
+  "versao": 2,
+  "url": "https://figshare.com/articles/dataset/Medical_Augmented_Reality_Facial_Data_Collection/8857007/2",
+  "urlDownload": "https://ndownloader.figshare.com/files/18502082",
+  "figshareFileId": 18502082,
+  "licenca": "CC-BY-4.0",
+  "licencaUrl": "https://creativecommons.org/licenses/by/4.0/",
+  "licencaTextoUrl": "https://creativecommons.org/licenses/by/4.0/legalcode.txt",
+  "licencaTextoSha256": "9ba9550ad48438d0836ddab3da480b3b69ffa0aac7b7878b5a0039e7ab429411",
+  "consulta": "2026-11-13",
+  "artigoDoi": "10.1038/s41597-019-0327-8",
+  "consentimentoFonte": "https://pmc.ncbi.nlm.nih.gov/articles/PMC6901520/",
+  "consentimentoEscopo": "Os autores relatam consentimento de todos os casos selecionados para publicação dos dados identificáveis e modelos faciais 3D. Não são disponibilizados formulários individuais.",
+  "origemArquivo": "Pat8.zip",
+  "origemBytes": 45659739,
+  "sha256ZipOrigem": "66e19fbc46465586c594903f087c9d161be9cc12f1f8fa7f20aa7538006531b7",
+  "md5Figshare": "e8b98de4112c91b0a05de51fb8baea44",
+  "entradaNRRD": "Pat8/Pat8_CT.nrrd",
+  "sha256NRRD": "e10002c5fe085baebd20a0000b024392c70db65cea0128458fd29aa37f091266",
+  "dimensoesOrigem": [
+    512,
+    512,
+    83
+  ],
+  "espaco": [
+    0.976562,
+    0.976562,
+    3.0
+  ],
+  "espacoNRRDOriginal": [
+    0.9765625,
+    0.9765625,
+    3.0
+  ],
+  "origemLPSOriginal": [
+    -249.51171875,
+    -398.51171875,
+    -693.0
+  ],
+  "recorteIndicesXYZ_fimExclusivo": [
+    [
+      166,
+      374
+    ],
+    [
+      82,
+      342
+    ],
+    [
+      30,
+      83
+    ]
+  ],
+  "dimensoes": [
+    208,
+    260,
+    53
+  ],
+  "origemLPS": [
+    -87.402344,
+    -318.433594,
+    -603.0
+  ],
+  "orientacaoLPS": [
+    1,
+    0,
+    0,
+    0,
+    1,
+    0
+  ],
+  "alteracoes": [
+    "Recorte espacial retangular, sem reamostragem, suavização, preenchimento ou alteração de intensidades",
+    "Pixels int16 preservados exatamente, sem conversão de intensidade",
+    "Coordenadas/espaçamentos escritos com até seis casas decimais, removendo apenas resíduos de ponto flutuante do cabeçalho NRRD",
+    "Cabeçalho NRRD técnico substituído por metadados de proveniência; nenhuma tag DICOM original importada"
+  ],
+  "intervaloUH": [
+    -1024,
+    3071
+  ],
+  "sha256PixelsInt16LE": "262ed0d317a0b5d8095cee6afe7930ba29fb631d178445434c7e4766083dd30b",
+  "bytesPixels": 5732480,
+  "bytesGzip": 3640915,
+  "sha256Gzip": "61c7e0002a73b69267681d159e1424a8c76170700f6b62c6e2d4af6b24bf61eb",
+  "camposCabecalhoNRRDAuditados": [
+    "dimension",
+    "encoding",
+    "endian",
+    "kinds",
+    "sizes",
+    "space",
+    "space directions",
+    "space origin",
+    "type"
+  ],
+  "comentariosNRRD": "Apenas gerador pynrrd, data de geração e URL da especificação; não transportados ao aplicativo.",
+  "limites": [
+    "O recorte didático termina na testa; a calota superior não foi completada artificialmente",
+    "O recorte remove tórax e grande parte do suporte; segmentos finos do apoio posterior permanecem para preservar os voxels reais",
+    "O volume contém artefatos metálicos dentários visíveis em cortes e faixas devidas à espessura de corte",
+    "Há estruturas faciais reconhecíveis por finalidade declarada da coleção; isso não permite afirmar anonimato",
+    "O caso não valida eficácia clínica dos algoritmos didáticos"
+  ]
+}

@@ -1,90 +1,109 @@
 # Laboratório de pseudonimização
 
-Os exemplos desta pasta foram fabricados por algoritmos. Não são exames de
-pacientes. A cabeça modelada permite praticar as operações, mas não mede a
-eficácia dos métodos em anatomia humana, em scanner real ou em uso clínico.
+O exemplo inicial do aplicativo é uma **TC real pública**, o caso Pat8 da
+Medical Augmented Reality Facial Data Collection v2. A coleção tem licença
+CC BY 4.0 e declaração dos autores sobre consentimento para publicação dos
+dados faciais identificáveis. Fonte, evidência de autorização, transformações
+e hashes estão em `publicos/mar-facial-pat8/`.
 
-O aplicativo contém dois desses casos: TC e RM. Eles são gerados dentro do
-navegador, sem conexão, e passam pelo mesmo leitor DICOM de um arquivo aberto.
-O código do gerador está em `src/js/75_exemplos.js`.
+O volume preparado mede **208 × 260 × 53** voxels, com espaçamento de
+**0,976562 × 0,976562 × 3,0 mm**. É um recorte dos pixels originais, sem
+reamostragem ou preenchimento. A parte superior do crânio já está ausente na
+fonte pública. O caso não é sintético e não deve ser anunciado como face anônima.
+
+O aplicativo abre o exame sem transformação e mostra **cinco cards excludentes**.
+Cada clique executa somente o método escolhido, sempre sobre o volume original.
+Escolher outro card substitui o resultado; não acumula transformações nem
+executa os cinco algoritmos em lote. A finalidade é entender as diferenças.
 
 ## Casos e objetivo de cada um
 
-| Arquivo | Conteúdo | Objetivo |
+| Material | Conteúdo | Objetivo |
 |---|---|---|
-| `sinteticos/FANTOMA_TC_SINTETICO.zip` | Cabeça modelada, TC simulada, 256 cortes de 192 × 224 | Comparar os cinco métodos, cortes, 3D, cabeçalhos, geometria e exportações |
-| `sinteticos/FANTOMA_RM_SINTETICO.zip` | RM esquemática na mesma geometria | Observar o limiar calculado a partir das intensidades, que não são UH |
-| `sinteticos/FANTOMA_TC_TEXTO_NOS_PIXELS.zip` | A mesma TC com a palavra fictícia `DEMO` desenhada nos pixels | Mostrar que limpar cabeçalhos não remove texto da imagem |
-| `publicos/cbctsynth-rt/TC_PUBLICA_FANTOMA.zip` | Fantoma público sintético, 44 cortes de 140 × 140 | Exercitar abertura de ZIP compactado, reescala e limites de detecção em geometria sem nariz |
-| `publicos/cbctsynth-rt/CBCT_PUBLICA_FANTOMA.zip` | Versão com ruído e artefatos simulados, 44 cortes | Comparar aspecto dos cortes e aprender que uma superfície encontrada não prova anatomia correta |
+| Caso embutido Pat8; proveniência em `publicos/mar-facial-pat8/` | TC real pública, recorte de 53 cortes de 208 × 260 | Explorar face real e comparar um método por vez, cortes, 3D, cabeçalhos de conversão e exportações |
+| `sinteticos/FANTOMA_TC_SINTETICO.zip` | Cabeça modelada, TC simulada, 256 cortes de 192 × 224 | Material auxiliar para testes e demonstração de identificadores fictícios e tags privadas |
+| `sinteticos/FANTOMA_RM_SINTETICO.zip` | RM esquemática na mesma geometria | Observar limiar por intensidade, sem atribuir UH aos valores |
+| `sinteticos/FANTOMA_TC_TEXTO_NOS_PIXELS.zip` | TC simulada com a palavra fictícia `DEMO` gravada nos pixels | Mostrar que limpar cabeçalhos não remove texto da imagem |
+| `publicos/cbctsynth-rt/TC_PUBLICA_FANTOMA.zip` | Fantoma público sintético, 44 cortes de 140 × 140 | Exercitar ZIP compactado, reescala e limites do detector em geometria sem nariz |
+| `publicos/cbctsynth-rt/CBCT_PUBLICA_FANTOMA.zip` | Versão sintética com ruído e artefatos, 44 cortes | Comparar cortes e discutir limites de uma superfície encontrada pelo algoritmo |
 
-Abra uma série por vez; não combine os ZIPs. Os dois arquivos públicos declaram
-modalidade DICOM **CT**, portanto selecione **TC**, inclusive para o CBCT.
+Os fantomas das versões anteriores permanecem em arquivos auxiliares e testes;
+não são opções do exemplo inicial. Abra uma série por vez. Os dois fantomas
+CBCTsynth-RT declaram modalidade DICOM **CT**; selecione **TC**, inclusive para
+o CBCT. O exemplo textual do aplicativo Data é fictício e independente da TC.
 
-## Roteiro de aula
+## Roteiro de aula com a TC real
 
-1. Abra o exemplo de TC pelo botão do aplicativo. Identifique o rótulo de
-   exemplo sintético e o indicador de isolamento de rede.
-2. Em **Cortes**, percorra os três planos e ajuste janela/nível. Em **3D**,
-   gire a superfície e localize nariz, pálpebras, lábios, orelhas e mandíbula.
-3. Em **Cabeçalhos**, procure `FANTOMA^SINTETICO`, o identificador fictício,
-   a instituição inventada, a data e as duas tags privadas. Esses campos
-   foram incluídos deliberadamente para a aula, não são achados de pacientes.
-4. Selecione os cinco métodos e processe. Troque o resultado no seletor sem
-   perder o original à esquerda. O preenchimento com ruído usa a semente;
-   a face genérica utiliza a geometria média do aplicativo.
-5. Compare os números em **Geometria facial** com a impressão visual. Uma
-   superfície aparentemente diferente pode ter pequeno deslocamento medido.
-   Não interprete nenhuma medida como porcentagem de anonimização.
-6. Compare os cabeçalhos antes/depois: nomes e identificadores mudam, tags
-   privadas são removidas, UIDs são renovados. Alguns quase-identificadores
-   permanecem. Leia a explicação da ação aplicada a cada campo.
-7. Exporte em **DICOM**, abra o ZIP resultante novamente e confira a geometria,
-   os valores e os metadados. Exporte em **NIfTI** e confira o arquivo em um
-   visualizador compatível. O DeFace RT não é um importador NIfTI.
-8. Repita com o exemplo de RM. A distribuição de intensidades é apenas
-   esquemática; observe o limiar automático, sem atribuir UH aos valores.
-9. Abra `FANTOMA_TC_TEXTO_NOS_PIXELS.zip` e veja o alerta de anotação queimada.
-   Nos cortes, procure `DEMO` no canto. Ela permanece após a limpeza do
-   cabeçalho: o app não é uma ferramenta de remoção de texto nos pixels.
-10. Abra os dois fantomas públicos, separadamente. Eles não têm um nariz
-    anatômico, embora o algoritmo possa localizar um ponto e não emitir
-    aviso. **A ausência de aviso não confirma adequação do exame.** Use-os
-    para discutir os limites de um detector geométrico e inspecionar o ZIP.
+1. Use **Explorar TC real**. Leia a fonte e a licença, identifique o rótulo de
+   caso real público e confira o indicador de isolamento de rede.
+2. Antes de escolher qualquer card, percorra **Cortes** e gire o **3D**.
+   Localize a face e observe o limite superior do volume, sem calota completa.
+3. Escolha **Plano de corte**. Compare o original à esquerda e o resultado
+   à direita, que usam a mesma escala. Leia a explicação do card.
+4. Escolha, em sequência, **Recorte de face**, **Preenchimento com ruído**,
+   **Suavização de superfície** e **Face genérica**. Só um card permanece ativo.
+   Cada método parte da TC original; o anterior não é aplicado novamente.
+5. Compare as medidas em **Geometria facial** com a impressão visual. Uma
+   mudança de aparência pode conservar geometria. Nenhuma medida representa
+   porcentagem de anonimização ou probabilidade de reconhecimento.
+6. Em **Cabeçalhos**, examine os metadados de conversão e de proveniência.
+   Eles não são os cabeçalhos clínicos originais do paciente. Ao exportar,
+   confira os identificadores e UIDs de saída e a descrição do método.
+7. Depois de revisar o resultado, exporte em **DICOM** e reabra o ZIP para
+   conferir pixels, geometria e cabeçalhos. Exporte em **NIfTI** e abra em um
+   visualizador compatível; o DeFace RT não importa NIfTI.
+8. Troque de card ou de limiar e observe a invalidação da revisão anterior.
+   Revise a nova saída antes de exportar. O exemplo ensina diferenças entre
+   métodos; não valida anonimato ou uso clínico.
+
+## Exercícios auxiliares
+
+Nos fantomas TC/RM, procure `FANTOMA^SINTETICO`, identificadores fictícios,
+instituição inventada e tags privadas. Foram inseridos deliberadamente para
+ensinar a limpeza de cabeçalhos e não vieram de prontuários. No fantoma de RM,
+as intensidades são simuladas e não são unidades Hounsfield.
+
+No arquivo `FANTOMA_TC_TEXTO_NOS_PIXELS.zip`, procure `DEMO` nos cortes e o
+alerta de anotação queimada. A palavra permanece após a limpeza do cabeçalho:
+o aplicativo não é uma ferramenta de remoção de texto dos pixels.
+
+Os fantomas públicos CBCTsynth-RT não têm nariz anatômico. O detector pode
+encontrar um ponto sem emitir aviso; isso não confirma adequação do volume.
 
 ## Origem e redistribuição
 
-Os três ZIPs em `sinteticos/` são gerados pelo código deste projeto. A superfície
-vem da malha humana modelada do MakeHuman, sob CC0, recortada para cabeça e
-pescoço. Ela não foi obtida de uma fotografia ou exame de pessoa. A origem,
-revisão, licença, transformações e hashes estão em `anatomia/PROVENIENCIA.json`.
-Os tecidos internos, intensidades de TC/RM, ruído, datas, nomes e identificadores
-são simulações didáticas autorais. O realismo da superfície não torna os cortes
-diagnosticamente corretos. A resolução é 192 × 224 × 256, com voxels de 1 mm.
+O caso real Pat8 provém de [Egger, Gsaxner e Wallner, Figshare v2](https://doi.org/10.6084/m9.figshare.8857007.v2).
+Preserve o crédito, a [licença CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)
+e a indicação das alterações. O LEIAME e a proveniência em
+`publicos/mar-facial-pat8/` registram os termos e as três citações solicitadas
+pelo banco. A licença MIT do código não substitui a licença desse dado.
 
-O modelo compacto está embutido no HTML e é descompactado localmente. O gerador
-cria arquivos DICOM reais, lidos pelo mesmo importador usado em séries externas.
-O visor renderiza esses pixels, inclusive depois dos métodos; não usa uma foto
-sobreposta para ilustrar um resultado que não existe no volume.
+Os três ZIPs em `sinteticos/` são gerados pelo código do projeto. A superfície
+vem do asset MakeHuman hm08, sob CC0, com cabeça e pescoço modelados. Os tecidos,
+intensidades, ruído, datas e identificadores são simulações didáticas.
+`anatomia/PROVENIENCIA.json` registra origem, revisão, licença e transformações.
 
-Os dois ZIPs em `publicos/cbctsynth-rt/` foram **baixados** do projeto
-[CBCTsynth-RT de Saifeldein](https://github.com/saifeldein0/cbctsynth-rt),
-revisão `ce01a802b2320a703d0bb48e16870315e35640ee`, consultada em 13/11/2026.
-O [gerador público](https://github.com/saifeldein0/cbctsynth-rt/blob/ce01a802b2320a703d0bb48e16870315e35640ee/sample_data/make_dummy_data.py)
-constrói elipsoides e ruído; não parte de exames reais. A
-[licença MIT](https://github.com/saifeldein0/cbctsynth-rt/blob/ce01a802b2320a703d0bb48e16870315e35640ee/LICENSE)
-foi preservada ao lado dos arquivos e dentro de cada ZIP. O empacotamento foi
-refeito, mas os 88 arquivos DICOM mantêm os bytes da origem. Não há qualquer
-associação, certificação ou endosso entre os projetos.
+Os dois ZIPs de `publicos/cbctsynth-rt/` foram baixados de
+[CBCTsynth-RT](https://github.com/saifeldein0/cbctsynth-rt), revisão
+`ce01a802b2320a703d0bb48e16870315e35640ee`, sob MIT. Seus 88 DICOM mantêm os
+bytes da origem. Proveniência, licença, gerador e auditoria específicos
+acompanham esses arquivos. São elipsoides e ruído, não exames de pacientes.
 
-`PROVENIENCIA.json` registra URLs, revisão, tamanhos e SHA-256 de cada DICOM
-e ZIP público. `AUDITORIA.json` registra a inspeção de todos os campos de
-texto e a montagem das duas séries. Foram rejeitados campos livres que não
-correspondam ao gerador, preâmbulos não vazios, tags privadas e sequências
-inesperadas. Os cortes centrais foram também inspecionados visualmente.
-Essa auditoria documenta estas amostras; não é um teste universal de PHI.
+Não há associação ou endosso dos autores dessas fontes ao DeFace RT.
 
 ## Reproduzir e verificar
+
+Preparação do caso real a partir da revisão e dos hashes fixados:
+
+```text
+python build/preparar_caso_publico.py --baixar
+```
+
+O conversor requer NumPy. Também aceita `--origem caminho/Pat8.zip` para
+preparação sem download. O aplicativo usa o volume compactado embutido e
+não baixa o caso durante o uso.
+
+Preparação e verificação dos materiais sintéticos auxiliares:
 
 ```text
 node build/gerar_exemplos.js
@@ -93,19 +112,11 @@ python build/baixar_exemplos_publicos.py
 node testes/teste_publicos.js
 ```
 
-Para reconstruir o modelo embutido a partir da malha original fixada, execute
-`python build/preparar_anatomia.py --baixar`. Esta preparação requer NumPy/SciPy e rede;
-não é necessária para abrir o aplicativo nem para gerar os DICOM offline.
+Para reconstruir o modelo sintético a partir da malha original fixada, use
+`python build/preparar_anatomia.py --baixar`, com NumPy/SciPy. Os comandos de
+preparação que baixam fontes usam rede e não executam código externo.
+O aplicativo final continua offline.
 
-Os comandos `baixar_exemplos_publicos.py` e `preparar_anatomia.py --baixar`
-acessam a rede durante a preparação do pacote. Usam revisões fixas e obtêm
-somente os dados e documentos de origem; não executam código externo.
-O programa final continua offline e não baixa exemplos durante o uso.
-
-Os testes autorais cobrem TC/RM × cinco métodos, mudança mensurável de
-superfície, determinismo do caso, identificação fictícia, tags privadas,
-escrita/releitura DICOM e cabeçalho/tamanho do NIfTI. O caso anotado verifica
-que o alerta aparece e que a limpeza de cabeçalho não apaga `DEMO`.
-Renderização, teclado, downloads e isolamento são verificados separadamente
-nos testes de navegador da entrega. A coleção não cobre todas as sintaxes
-DICOM nem prova anonimato ou validade clínica.
+O escopo dos testes da entrega está em `docs/VALIDACAO.md`. As verificações
+de código, conteúdo, geometria e navegação não cobrem todas as sintaxes DICOM,
+fabricantes ou navegadores, nem provam anonimato ou validade clínica.

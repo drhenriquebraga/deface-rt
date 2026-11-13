@@ -9,8 +9,8 @@ RAIZ = pathlib.Path(__file__).resolve().parents[1]
 GRUPOS = {
     'dicom': ('src', '_all.js', ['10_core.js','20_dict.js','30_dicom.js',
         '40_volume.js','50_deface.js','60_render.js','70_write.js',
-        '74_anatomia.js','75_exemplos.js','80_ui.js'], ['teste.js','teste_exemplos.js',
-        'teste_limites.js','teste_publicos.js','teste_render.js']),
+        '74_anatomia.js','75_exemplos.js','76_caso_publico_dados.js','77_caso_publico.js','80_ui.js'], ['teste.js','teste_exemplos.js',
+        'teste_limites.js','teste_publicos.js','teste_render.js','teste_caso_publico.js']),
     'data': ('data', '_all_data.js', ['10_core.js','20_padroes.js','25_listas.js',
         '30_motor.js','40_ui.js'], ['teste_data.js','teste_formatos.js']),
 }

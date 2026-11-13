@@ -1,4 +1,4 @@
-# Integração DeFace RT 1.4.1
+# Integração DeFace RT 1.5.0
 
 ## Destinos desta entrega
 
@@ -33,7 +33,7 @@ Não é necessária API, conta de serviço, token, segredo ou banco de dados.
 - programas/: dois HTMLs offline e seus hashes.
 - site/: estrutura para hospedar no domínio e regras de cabeçalho.
 - integracao/: fragmento e instruções; MENSAGEM_LUCAS.md é somente rascunho.
-- exemplos/: cinco ZIPs sintéticos, origem, licenças e roteiro.
+- exemplos/: TC real Pat8 autorizada, cinco ZIPs sintéticos auxiliares, origem, licenças e roteiro.
 - src/, data/, build/, testes/: código e verificações reproduzíveis.
 - LICENSES/ e LICENSE: licenças específicas de cada componente.
 - docs/: validação, bibliografia e auditoria.
@@ -46,8 +46,11 @@ isolamento.invalid é esperado; não remova a política para eliminar essa mensa
 Abrir e processar os exemplos não deve criar conexão de rede. O servidor pode
 registrar o acesso inicial à página, mas não recebe exames nem textos do app.
 
-Exemplos públicos são elipsoides, sem anatomia facial completa. Nenhum caso
-valida uso clínico. Não prometa anonimato, conformidade LGPD ou eficácia facial.
+A TC real Pat8 é publicada sob CC BY 4.0, com consentimento facial declarado
+pelos autores. Preservem créditos, links da fonte/licença e as adaptações.
+O recorte não inclui a calota superior completa. Os fantomas antigos ficam como
+arquivos auxiliares; não são o exemplo inicial. Nenhum caso valida uso clínico.
+Não prometam anonimato, conformidade LGPD ou eficácia facial.
 
 Mantenha o ZIP anterior como rollback. Substitua arquivos e hashes em conjunto.
 GitHub Pages usa a CSP meta; no domínio próprio, _headers também aplica as

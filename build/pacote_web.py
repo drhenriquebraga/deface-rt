@@ -40,7 +40,8 @@ def preparar(repo, programa, data):
                 inserir(p.relative_to(RAIZ).as_posix(), p.read_bytes())
     for nome in ('README.md','LICENSE','PRODUCT.md','DESIGN.md','entrega.txt',
                  'build/montar.py','build/fonts_b64.json','build/gerar_exemplos.js',
-                 'build/baixar_exemplos_publicos.py','build/preparar_anatomia.py','build/auditar_segredos.py',
+                 'build/baixar_exemplos_publicos.py','build/preparar_anatomia.py','build/preparar_caso_publico.py',
+                 'build/gerar_caso_publico.js','build/auditar_segredos.py',
                  'build/pacote_web.py','deploy/_headers','docs/VALIDACAO.md','docs/08_BIBLIOGRAFIA.md'):
         inserir(nome, (RAIZ/nome).read_bytes())
     if (RAIZ/'docs/AUDITORIA_PUBLICACAO.md').exists():
@@ -71,12 +72,12 @@ def preparar(repo, programa, data):
     fragmento = f'''<!-- DeFace RT {versao}: substituir somente o conteudo da minipagina correspondente. -->
 <section class="deface-estudio" aria-labelledby="deface-estudio-titulo">
   <h1 id="deface-estudio-titulo">Aprenda o que seus dados podem revelar.</h1>
-  <p>Explore casos sintéticos e entenda os limites da pseudonimização.</p>
+  <p>Explore uma TC real autorizada e entenda os limites da pseudonimização.</p>
   <div class="deface-estudio-opcoes">
-    <a href="{programa}" target="_blank" rel="noopener noreferrer"><strong>Imagem DICOM</strong><span>Compare métodos, imagens e cabeçalhos com um fantoma de TC ou RM.</span><b>Explorar imagens ↗</b></a>
+    <a href="{programa}" target="_blank" rel="noopener noreferrer"><strong>Imagem DICOM</strong><span>Escolha um dos cinco cards e veja seu efeito numa TC real publicada com consentimento.</span><b>Explorar imagens ↗</b></a>
     <a href="{data}" target="_blank" rel="noopener noreferrer"><strong>Texto</strong><span>Troque identificadores, revise o resultado e teste a restauração.</span><b>Explorar texto ↗</b></a>
   </div>
-  <p class="deface-estudio-nota">Processamento local no navegador · Exemplos sem dados de pacientes</p>
+  <p class="deface-estudio-nota">Processamento local · TC pública MAR Facial, CC BY 4.0 · Texto de exemplo fictício</p>
   <details><summary>Privacidade, limites e código-fonte</summary>
     <p>Uso educacional. Não validado para uso clínico. Pseudonimização não é anonimização; revise imagens, cabeçalhos e textos antes de divulgar.</p>
     <p>Os programas não utilizam IA e funcionam offline depois de baixados. <a href="{repo}" target="_blank" rel="noopener noreferrer">Código-fonte, exemplos e documentação</a>.</p>
@@ -95,9 +96,9 @@ def preparar(repo, programa, data):
 '''
     mensagem = f'''Lucas e equipe de agentes,
 
-O DeFace RT foi atualizado para a versão {versao}, com o design Estúdio e foco educacional. A entrada agora oferece casos sintéticos de TC, RM e texto, com roteiro para comparar resultados, investigar cabeçalhos e compreender os limites da pseudonimização.
+O DeFace RT foi atualizado para a versão {versao}, com foco em ensino. O DICOM agora usa uma TC real pública; cinco cards excludentes substituem o dropdown e as seleções múltiplas. Cada card aplica apenas seu algoritmo, sempre sobre a imagem original. O Data mantém seu exemplo de texto fictício.
 
-O exemplo DICOM agora tem uma cabeça humana modelada, com pálpebras, lábios, orelhas e pescoço, em 256 cortes de 1 mm. A superfície vem de um asset MakeHuman CC0; os tecidos e intensidades são simulados. O visor representa o volume processado e preserva a mesma escala na comparação.
+O caso Pat8 vem da Medical Augmented Reality Facial Data Collection, v2, de Egger, Gsaxner e Wallner (2019), sob CC BY 4.0: https://doi.org/10.6084/m9.figshare.8857007.v2. Os autores declaram consentimento dos participantes para publicar dados identificáveis e modelos faciais 3D: https://pmc.ncbi.nlm.nih.gov/articles/PMC6901520/. Preservem os créditos, a licença e a descrição das adaptações. É uma TC real, não um fantoma; o recorte não inclui a calota superior. O recorte conserva os pixels originais.
 
 Por favor, atualizem o card DeFace RT em Motores → Produtividade no radioterapia.ai. Na minipágina correspondente, usem estes destinos, abrindo em nova aba:
 
@@ -111,7 +112,7 @@ O ZIP DEFACE_RT_v{versao}_WEBMASTER.zip contém os programas offline, a estrutur
 
 Se preferirem hospedar no próprio domínio, copiem site/ para a raiz publicada, preservando /deface/dicom/ e /deface/data/. Mesclem as regras do arquivo _headers com as existentes e ajustem apenas os dois href do fragmento. Não sobrescrevam a configuração geral do site. Abram os aplicativos em nova aba, sem iframe. Não injetem analytics, Rocket Loader, ofuscação de e-mail ou minificação nos HTMLs. Preservem connect-src 'none' e os bytes dos artefatos.
 
-Depois do update, testem o distintivo de isolamento, o exemplo TC/RM, os cinco métodos, cabeçalhos, geometria e exportações; no Data, testem pseudonimização, revisão e restauração simulada. Confiram o hash dos arquivos servidos com SHA256SUMS.txt. O pacote traz casos públicos efetivamente sintéticos, com origem e licença, e exemplos autorais; não há exames de pacientes.
+Depois do update, testem o distintivo de isolamento, a TC real, cada um dos cinco cards, a exclusividade da seleção, cabeçalhos, geometria e exportações; no Data, testem pseudonimização, revisão e restauração simulada. Confiram o hash dos arquivos servidos com SHA256SUMS.txt. O pacote contém a TC pública autorizada e arquivos sintéticos auxiliares; não descrevam toda a coleção como sintética ou sem dados de pacientes.
 
 Mantenham a descrição: “Ferramenta educacional. Pseudonimização não é anonimização. Não validada para uso clínico.”
 
@@ -152,7 +153,7 @@ Não é necessária API, conta de serviço, token, segredo ou banco de dados.
 - programas/: dois HTMLs offline e seus hashes.
 - site/: estrutura para hospedar no domínio e regras de cabeçalho.
 - integracao/: fragmento e instruções; MENSAGEM_LUCAS.md é somente rascunho.
-- exemplos/: cinco ZIPs sintéticos, origem, licenças e roteiro.
+- exemplos/: TC real Pat8 autorizada, cinco ZIPs sintéticos auxiliares, origem, licenças e roteiro.
 - src/, data/, build/, testes/: código e verificações reproduzíveis.
 - LICENSES/ e LICENSE: licenças específicas de cada componente.
 - docs/: validação, bibliografia e auditoria.
@@ -165,8 +166,11 @@ isolamento.invalid é esperado; não remova a política para eliminar essa mensa
 Abrir e processar os exemplos não deve criar conexão de rede. O servidor pode
 registrar o acesso inicial à página, mas não recebe exames nem textos do app.
 
-Exemplos públicos são elipsoides, sem anatomia facial completa. Nenhum caso
-valida uso clínico. Não prometa anonimato, conformidade LGPD ou eficácia facial.
+A TC real Pat8 é publicada sob CC BY 4.0, com consentimento facial declarado
+pelos autores. Preservem créditos, links da fonte/licença e as adaptações.
+O recorte não inclui a calota superior completa. Os fantomas antigos ficam como
+arquivos auxiliares; não são o exemplo inicial. Nenhum caso valida uso clínico.
+Não prometam anonimato, conformidade LGPD ou eficácia facial.
 
 Mantenha o ZIP anterior como rollback. Substitua arquivos e hashes em conjunto.
 GitHub Pages usa a CSP meta; no domínio próprio, _headers também aplica as
@@ -193,7 +197,7 @@ proteções HTTP, incluindo frame-ancestors. Não enfraqueça connect-src 'none'
     local = fragmento.replace(programa, '/deface/dicom/').replace(data, '/deface/data/')
     pagina = '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DeFace RT — aprender e explorar</title></head><body style="background:#081222;margin:0;font-family:system-ui,sans-serif">'+local+'</body></html>'
     pacote['site/deface/index.html'] = pagina.encode('utf-8')
-    for nome in ('bancos.log','navegador_dicom.log','navegador_data.log','auditoria.log','render.log'):
+    for nome in ('bancos.log','navegador_dicom.log','navegador_data.log','auditoria.log','render.log','caso_publico.log'):
         p = RAIZ/'dist/qa'/nome
         if p.exists():
             pacote['validacao/'+nome] = p.read_bytes()

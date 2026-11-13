@@ -1,5 +1,5 @@
 {
-  "versao": "1.4.1",
+  "versao": "1.5.0",
   "data": "2026-11-13",
   "raiz_repositorios": "https://github.com/drhenriquebraga",
   "repositorio": "https://github.com/drhenriquebraga/deface-rt",
@@ -11,11 +11,11 @@
   },
   "artefatos": {
     "DeFace_RT.html": {
-      "sha256": "f09aa9f9d7a213bc684b756290d0a649379665f05329814a7428677eb2e39114",
-      "bytes": 1375559
+      "sha256": "7a65ef86042f43ec048b320c0359f8eab760a4e76fa5c36a32bfc5566669adca",
+      "bytes": 5194026
     },
     "DeFace_RT_Data.html": {
-      "sha256": "90b6cd3594d05d5417a69e7eef3c58aa8236c26508cc3619aa7778cc3ff6a566",
+      "sha256": "a34f955aed70b898c93bf93139cc9de5be12a44d84b21e120124f8b5dcaf93d9",
       "bytes": 216778
     }
   },
