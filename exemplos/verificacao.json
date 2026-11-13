@@ -1,0 +1,88 @@
+{
+  "resultados": [
+    {
+      "modalidade": "CT",
+      "cortes": 112,
+      "bytesZIP": 3834714,
+      "medidas": [
+        {
+          "modalidade": "CT",
+          "metodo": "plano",
+          "limiar": -400,
+          "rms": 20.8,
+          "alterados": 2.52
+        },
+        {
+          "modalidade": "CT",
+          "metodo": "recorte",
+          "limiar": -400,
+          "rms": 28.86,
+          "alterados": 4.39
+        },
+        {
+          "modalidade": "CT",
+          "metodo": "ruido",
+          "limiar": -400,
+          "rms": 28.86,
+          "alterados": 4.39
+        },
+        {
+          "modalidade": "CT",
+          "metodo": "suave",
+          "limiar": -400,
+          "rms": 1.87,
+          "alterados": 6.74
+        },
+        {
+          "modalidade": "CT",
+          "metodo": "generica",
+          "limiar": -400,
+          "rms": 20.44,
+          "alterados": 4.42
+        }
+      ]
+    },
+    {
+      "modalidade": "MR",
+      "cortes": 112,
+      "bytesZIP": 3834938,
+      "medidas": [
+        {
+          "modalidade": "MR",
+          "metodo": "plano",
+          "limiar": 219,
+          "rms": 23.4,
+          "alterados": 2.3
+        },
+        {
+          "modalidade": "MR",
+          "metodo": "recorte",
+          "limiar": 219,
+          "rms": 30.77,
+          "alterados": 4.69
+        },
+        {
+          "modalidade": "MR",
+          "metodo": "ruido",
+          "limiar": 219,
+          "rms": 30.77,
+          "alterados": 4.69
+        },
+        {
+          "modalidade": "MR",
+          "metodo": "suave",
+          "limiar": 219,
+          "rms": 5.99,
+          "alterados": 6.84
+        },
+        {
+          "modalidade": "MR",
+          "metodo": "generica",
+          "limiar": 219,
+          "rms": 20.65,
+          "alterados": 4.71
+        }
+      ]
+    }
+  ]
+}

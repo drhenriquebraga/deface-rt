@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<!-- Política de segurança de conteúdo: o navegador IMPEDE qualquer saída de rede.
+     connect-src 'none'  bloqueia fetch, XMLHttpRequest, WebSocket, EventSource e sendBeacon.
+     Aqui isso pesa ainda mais que no irmão DICOM: o que se cola nesta tela é texto de
+     prontuário, e ele não pode sair nem por engano. Ver docs/03_PRIVACIDADE.md. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src data:; img-src 'self' data: blob:; connect-src 'none'; form-action 'none'; object-src 'none'; base-uri 'none'">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DeFace RT Data — pseudonimização de texto clínico</title>
+<style>
+@font-face{font-family:'Outfit';font-weight:400;font-style:normal;font-display:block;src:url(data:font/woff;base64,__OUTFIT_R__) format('woff')}
+@font-face{font-family:'Outfit';font-weight:700;font-style:normal;font-display:block;src:url(data:font/woff;base64,__OUTFIT_B__) format('woff')}
+@font-face{font-family:'JBMono';font-weight:400;font-style:normal;font-display:block;src:url(data:font/woff;base64,__JB_R__) format('woff')}
+
+:root{
+  --bg:#050A18; --bg-2:#070D1C; --panel:#080F22; --panel-2:#0B142C;
+  --halo-a:#070F24; --halo-b:#081428;
+  --grad-a:#0A2A6B; --grad-b:#24D3EE;
+  --ink:#FFFFFF; --ink-soft:#9AA8C6; --ink-dim:#63739A;
+  --hair:#18203A; --rule:#26314F;
+  --crit:#FF5C7A; --alto:#FFA23A; --medio:#FFD97A; --baixo:#4FD1A5;
+  --r:3px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:'Outfit',system-ui,sans-serif;
+  font-size:14px;line-height:1.35;overflow:hidden;-webkit-font-smoothing:antialiased}
+/* Sem halo de fundo: a tela de trabalho e um negatoscopio, e nada atras do
+   conteudo deve brilhar. Sobra uma veladura unica, quase imperceptivel, so
+   para o preto nao ficar chapado. */
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(1200px 800px at 50% -20%, var(--halo-a) 0%, transparent 70%);
+  opacity:.5}
+.mono{font-family:'JBMono',ui-monospace,monospace}
+.kick{font-family:'JBMono',ui-monospace,monospace;font-size:11px;letter-spacing:.01em;
+  color:var(--ink-dim)}
+
+#app{position:relative;z-index:1;height:100%;display:flex;flex-direction:column}
+
+/* ==== CABECALHO PADRAO — identico nos dois aplicativos ====
+   build/montar.py compara os dois shells e recusa a montagem se divergirem:
+   o cabecalho e a assinatura da familia e nao pode andar sozinho num deles. */
+header{
+  display:flex;align-items:baseline;gap:20px;flex-wrap:wrap;
+  padding:14px 22px 12px;border-bottom:1px solid var(--hair);
+}
+header .spacer{flex:1}
+.wordmark{font-weight:700;font-size:27px;letter-spacing:-.022em;line-height:1}
+.wordmark .de{color:#fff}
+.wordmark .rt{background:linear-gradient(96deg,var(--grad-a) 0%,var(--grad-b) 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.tagline{color:var(--ink-soft);font-size:12.5px}
+.badge{border:1px solid var(--hair);border-radius:999px;padding:4px 12px;
+  font-family:'JBMono',monospace;font-size:10.5px;letter-spacing:.01em;
+  color:var(--ink-dim);white-space:nowrap}
+.badge b{color:var(--baixo);font-weight:400}
+@media (max-width:1080px){ .wordmark{font-size:23px} }
+/* ==== FIM DO CABECALHO PADRAO ==== */
+
+/* A rail quebra em vez de rolar: com overflow-x os ultimos passos ficavam
+   fora da tela sem nada indicando que havia mais a direita. Controle
+   escondido e controle que nao existe. */
+.rail{display:flex;flex-wrap:wrap;gap:0;border-bottom:1px solid var(--hair);
+  background:var(--bg-2)}
+.step{padding:11px 20px;border-right:1px solid var(--hair);display:flex;flex-direction:column;
+  gap:7px;min-width:max-content}
+.step .n{color:var(--grad-b);opacity:.85}
+.step.grow{flex:1}
+/* o passo de acao nao tem rotulo: alinha pelo rodape do vizinho */
+.step.acao{justify-content:flex-end;margin-left:auto;border-right:0}
+
+.btn{background:transparent;border:1px solid var(--hair);border-radius:var(--r);
+  color:var(--ink-soft);font-family:'JBMono',monospace;font-size:11px;letter-spacing:.1em;
+  padding:6px 14px;cursor:pointer;transition:.16s;white-space:nowrap}
+.btn:hover:not(:disabled){color:var(--ink);border-color:var(--rule);background:rgba(36,211,238,.07)}
+.btn:disabled{opacity:.3;cursor:not-allowed}
+.btn:focus-visible{outline:2px solid var(--grad-b);outline-offset:2px}
+.btn.primary{border-color:transparent;color:#04121c;
+  background:linear-gradient(96deg,var(--grad-a),var(--grad-b))}
+.btn.primary:hover:not(:disabled){filter:brightness(1.13)}
+.btn.primary:disabled{background:#16203c;color:var(--ink-dim)}
+
+.chk{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--hair);
+  border-radius:var(--r);padding:5px 11px;cursor:pointer;transition:.16s;font-size:11.5px;
+  color:var(--ink-soft);white-space:nowrap;user-select:none}
+.chk input{appearance:none;width:11px;height:11px;border:1px solid var(--rule);border-radius:2px;
+  cursor:pointer;flex:none;transition:.16s}
+.chk input:checked{background:linear-gradient(96deg,var(--grad-a),var(--grad-b));border-color:transparent}
+.chk:has(input:checked){color:var(--ink);border-color:rgba(36,211,238,.42);background:rgba(36,211,238,.06)}
+input[type=text]{background:var(--panel-2);border:1px solid var(--hair);border-radius:var(--r);
+  color:var(--ink);font-family:'JBMono',monospace;font-size:11px;padding:6px 9px;outline:0}
+input[type=text]:focus{border-color:var(--grad-b)}
+
+.tabs{display:flex;gap:2px}
+.tabs button{background:transparent;border:0;border-bottom:2px solid transparent;
+  color:var(--ink-dim);font-family:'JBMono',monospace;font-size:11px;letter-spacing:.1em;
+  padding:8px 14px;cursor:pointer;transition:.16s}
+.tabs button:hover{color:var(--ink-soft)}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--grad-b)}
+.tabs button:focus-visible{outline:2px solid var(--grad-b);outline-offset:-2px}
+
+.stage{flex:1;display:flex;flex-direction:column;min-height:0}
+.view{display:none;flex:1;min-height:0;flex-direction:column}
+.view.on{display:flex}
+
+.duplo{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--hair);min-height:0}
+.caixa{background:var(--bg);display:flex;flex-direction:column;min-height:0;min-width:0}
+.caixa-head{display:flex;align-items:center;gap:12px;padding:9px 16px;
+  border-bottom:1px solid var(--hair);background:rgba(7,14,32,.5)}
+.caixa-head .spacer{flex:1}
+textarea{flex:1;width:100%;resize:none;background:transparent;border:0;outline:0;color:var(--ink);
+  font-family:'JBMono',ui-monospace,monospace;font-size:12.5px;line-height:1.6;padding:14px 16px;
+  min-height:0}
+textarea::placeholder{color:var(--ink-dim)}
+textarea[readonly]{color:var(--ink-soft)}
+
+.painel{border-top:1px solid var(--hair);background:var(--panel);display:flex;
+  flex-direction:column;max-height:38%}
+.painel-head{display:flex;align-items:center;gap:14px;padding:9px 16px;border-bottom:1px solid var(--hair)}
+.painel-head .spacer{flex:1}
+.painel-corpo{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--hair);
+  overflow:hidden;min-height:0}
+.painel-corpo > div{background:var(--panel);overflow:auto;padding:12px 16px;min-height:0}
+
+.metricas{display:flex;gap:22px;flex-wrap:wrap;padding:11px 16px;border-bottom:1px solid var(--hair)}
+.metrica{display:flex;flex-direction:column;gap:2px}
+.metrica .v{font-family:'JBMono',monospace;font-size:17px;color:var(--ink)}
+.metrica .r{font-size:10.5px;color:var(--ink-dim);letter-spacing:.04em}
+.metrica.alerta .v{color:var(--alto)}
+
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{text-align:left;font-family:'JBMono',monospace;font-size:9.5px;letter-spacing:.01em;
+  color:var(--ink-dim);font-weight:400;padding:0 8px 7px 0;
+  border-bottom:1px solid var(--hair)}
+td{padding:6px 8px 6px 0;border-bottom:1px solid rgba(34,46,74,.5);color:var(--ink-soft);
+  vertical-align:top}
+td.tag{font-family:'JBMono',monospace;font-size:11px;color:var(--grad-b);white-space:nowrap}
+td.num{font-family:'JBMono',monospace;text-align:right;color:var(--ink)}
+.pill{display:inline-block;font-family:'JBMono',monospace;font-size:9px;letter-spacing:.1em;
+  padding:2px 6px;border-radius:2px;border:1px solid}
+.pill.c{color:var(--crit);border-color:rgba(255,92,122,.45)}
+.pill.a{color:var(--alto);border-color:rgba(255,162,58,.45)}
+.pill.m{color:var(--medio);border-color:rgba(255,217,122,.4)}
+
+.suspeita{display:inline-block;font-family:'JBMono',monospace;font-size:11px;
+  border:1px solid rgba(255,162,58,.35);color:var(--alto);border-radius:2px;
+  padding:2px 7px;margin:0 5px 5px 0}
+.vazio{color:var(--ink-dim);font-size:12px;padding:6px 0}
+
+.nota{padding:10px 16px;border-top:1px solid var(--hair);background:rgba(255,162,58,.06);
+  display:flex;gap:11px;align-items:flex-start;font-size:12.5px;color:var(--ink-soft)}
+.nota b{color:var(--alto);font-weight:400}
+.nota .sel{font-family:'JBMono',monospace;font-size:9px;letter-spacing:.12em;
+  border:1px solid rgba(255,162,58,.45);color:var(--alto);border-radius:2px;padding:2px 6px;
+  white-space:nowrap}
+
+#prog{height:2px;background:linear-gradient(96deg,var(--grad-a),var(--grad-b));width:0;
+  transition:width .2s}
+
+.rodape{border-top:1px solid var(--hair);background:rgba(7,14,32,.72);display:flex;
+  flex-direction:column;max-height:34%}
+.rodape-head{display:flex;align-items:center;gap:12px;padding:7px 16px;cursor:pointer}
+.rodape-head .spacer{flex:1}
+#logLast{font-family:'JBMono',monospace;font-size:10.5px;color:var(--ink-dim);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60%}
+#logBody{display:none;overflow:auto;padding:0 16px 10px;font-family:'JBMono',monospace;font-size:11px}
+#logBody.on{display:block}
+#logBody .linha{padding:2px 0;color:var(--ink-soft)}
+#logBody .hora{color:var(--ink-dim);margin-right:10px}
+#logBody .ok{color:var(--baixo)}
+#logBody .aviso{color:var(--alto)}
+#logBody .destaque{color:var(--ink)}
+
+.modal{position:fixed;inset:0;z-index:10;display:none;align-items:center;justify-content:center;
+  padding:28px;background:rgba(3,7,18,.78)}
+.modal.on{display:flex}
+.modal-cx{background:var(--panel);border:1px solid var(--rule);border-radius:var(--r);
+  max-width:760px;max-height:84vh;overflow:auto;padding:28px 30px}
+.modal-cx h4{font-size:19px;font-weight:700;margin-bottom:4px}
+.modal-cx h5{font-size:13px;font-weight:400;color:var(--grad-b);margin:18px 0 5px;
+  font-family:'JBMono',monospace;letter-spacing:.01em;}
+.modal-cx div{color:var(--ink-soft);font-size:13.5px;line-height:1.6}
+.modal-cx ul{margin:6px 0 0 18px}
+.modal-cx li{margin-bottom:4px}
+
+@media (max-width:900px){
+  .duplo,.painel-corpo{grid-template-columns:1fr}
+  .painel{max-height:46%}
+}
+
+/* ==== ESTÚDIO: aprender, comparar e revisar ==== */
+:root{--bg:#081222;--bg-2:#0b1728;--panel:#111e32;--panel-2:#15243b;--ink:#f3f6fc;--ink-soft:#b3c2d9;--ink-dim:#97aaca;--hair:#293b53;--rule:#405875;--grad-a:#7b9cf5;--grad-b:#7b9cf5;--baixo:#52d3b1;--r:10px}
+body{font-size:15px;line-height:1.5;overflow:auto;background:var(--bg)}
+body::before{display:none}#app{height:auto;min-height:100vh}[hidden]{display:none!important}
+button,input,textarea{font:inherit}button:focus-visible,a:focus-visible,summary:focus-visible,input:focus-visible,textarea:focus-visible,[tabindex]:focus-visible{outline:3px solid #a9c0ff;outline-offset:4px}
+::selection{background:#345492;color:#fff}::-webkit-scrollbar{width:9px;height:9px}::-webkit-scrollbar-thumb{background:var(--rule);border-radius:8px}
+.kick{font-family:'Outfit',sans-serif;font-size:13px;letter-spacing:0;color:var(--ink-dim)}
+#app>header{align-items:center;gap:18px;padding:18px 28px;min-height:78px}
+.brand-symbol{width:35px;height:35px;flex:none;color:var(--ink)}
+.wordmark{font-size:26px;letter-spacing:-.025em}.wordmark .rt{color:var(--ink);background:none;-webkit-text-fill-color:var(--ink)}
+.brand-type{font-size:12px;font-weight:400;color:var(--ink-soft);display:block;margin-top:5px;letter-spacing:.05em}
+.tagline{font-size:17px;border-left:1px solid var(--rule);padding-left:20px}.badge{font-family:'Outfit',sans-serif;border:0;font-size:14px;letter-spacing:0;padding:0;color:var(--ink-soft)}
+.btn{font-family:'Outfit',sans-serif;font-size:14px;letter-spacing:0;min-height:40px;padding:9px 15px;border-color:var(--rule);border-radius:8px;white-space:normal}
+.btn.primary{background:var(--grad-b);color:#09172f;font-weight:700;border:1px solid var(--grad-b)}.btn:disabled{opacity:.5}.btn.primary:disabled{background:#24344d;color:#a2b2cb;border-color:#24344d}
+.btn.text{border-color:transparent;color:#a9c0ff;background:transparent;padding:5px 10px}
+.flow{display:flex;align-items:center;justify-content:center;gap:20px;padding:14px 24px;border-bottom:1px solid var(--hair);color:var(--ink-dim)}
+.flow span{padding:6px 16px;border-radius:7px;font-size:15px}.flow span[aria-current=step]{background:var(--grad-b);color:#09172f;font-weight:700}.flow i{height:1px;width:36px;background:var(--rule)}
+.welcome{width:min(1060px,100%);margin:0 auto;padding:52px 30px 44px;flex:1}
+.welcome-intro{max-width:780px}.welcome h1{font-size:clamp(32px,3.3vw,48px);line-height:1.12;letter-spacing:-.025em;margin:0 0 18px}.welcome-intro p{font-size:19px;color:var(--ink-soft);max-width:650px;line-height:1.6}
+.learning-path{display:flex;gap:30px;margin:28px 0 32px;padding:20px 0;border-top:1px solid var(--hair);border-bottom:1px solid var(--hair)}.learning-path div{flex:1;display:flex;align-items:baseline;gap:11px}.learning-path b{color:var(--grad-b);font-size:17px}.learning-path span{color:var(--ink-soft);font-size:15px}
+.welcome-actions{display:grid;grid-template-columns:1.2fr 1fr;gap:38px;align-items:start}.demo-start{padding:26px;background:var(--panel);border:1px solid var(--hair);border-radius:14px}.demo-start h2,.import-start h2{font-size:23px;letter-spacing:-.015em;margin-bottom:8px}.demo-start p,.import-start p{color:var(--ink-soft);margin-bottom:20px;max-width:46ch}.demo-start .btn.primary{width:100%;font-size:17px;padding:13px 18px}.example-detail{font-size:13px!important;margin:15px 0 0!important;color:var(--ink-dim)!important}.import-start{padding:22px 0}
+.studio-main{padding:24px 28px 28px;flex:1}.studio-heading{display:flex;align-items:center;gap:24px;justify-content:space-between;margin-bottom:20px}.studio-heading h1{font-size:32px;line-height:1.2;letter-spacing:-.02em;margin-bottom:7px}.studio-heading p{color:var(--ink-soft);font-size:16px}.study-label{font-size:13px;color:var(--baixo);margin-top:8px}
+.rail{background:transparent;border:0;justify-content:space-between;align-items:flex-start;gap:16px;margin:16px 0}.rail .actions{display:flex;gap:9px;flex-wrap:wrap}.settings{max-width:660px;color:var(--ink-soft)}.settings summary{cursor:pointer;padding:9px 0;color:var(--ink)}.settings-content{display:flex;flex-wrap:wrap;gap:16px;padding:12px 0}.seed-controls{display:flex;align-items:center;gap:8px}.seed-controls input{width:130px;font-size:13px;min-height:39px}.chk{border:0;padding:8px 0;font-size:14px;white-space:normal}.chk input{appearance:auto;accent-color:var(--grad-b);height:16px;width:16px}.chk:has(input:checked){background:none;border:0}.settings .help{font-size:13px;margin-top:5px;max-width:70ch}
+.tabs{gap:10px;padding:12px 0;border-top:1px solid var(--hair);border-bottom:1px solid var(--hair);margin-bottom:16px;flex-wrap:wrap}.tabs button{font-family:'Outfit',sans-serif;font-size:15px;letter-spacing:0;border:0;border-radius:7px;padding:9px 16px;color:var(--ink-soft)}.tabs button[aria-selected=true]{background:var(--grad-b);color:#09172f;font-weight:700}.tabs button:disabled{opacity:.45;cursor:not-allowed}
+.duplo{gap:16px;background:transparent;min-height:400px;flex:none}.duplo.somente-entrada{grid-template-columns:1fr;max-width:1000px}.caixa{border:1px solid var(--rule);border-radius:10px;overflow:hidden;background:#0b1728}.caixa-head{padding:12px 16px;min-height:58px;background:var(--panel);gap:9px}.caixa-head>label,.caixa-head>span:first-child{font-size:18px;font-weight:700;color:var(--ink)}.caixa-head #infoEntrada{font-size:12px;white-space:nowrap}.caixa textarea{font-family:'Outfit',sans-serif;font-size:16px;line-height:1.65;min-height:340px;height:340px;resize:vertical;padding:18px;color:var(--ink);caret-color:var(--grad-b)}.caixa textarea[readonly]{color:var(--ink-soft)}.caixa textarea:focus-visible{outline-offset:-4px}.caixa textarea::placeholder{color:var(--ink-dim)}
+.painel{max-height:none;margin-top:20px;border:1px solid var(--hair);border-radius:10px;overflow:hidden}.painel-head{padding:16px 18px;flex-wrap:wrap}.painel-head h2{font-size:20px}.painel-head p{color:var(--ink-soft);font-size:14px}.painel-corpo{overflow:visible;gap:1px}.painel-corpo>div{padding:18px;max-height:290px}.metricas{padding:16px 18px;gap:30px}.metrica .v{font-size:21px}.metrica .r{font-size:13px;letter-spacing:0}th{font-family:'Outfit',sans-serif;font-size:13px}td{font-size:14px}td.tag{font-size:12px}.pill{font-size:11px;letter-spacing:0}.suspeita{font-size:12px;padding:5px 8px}.vazio{font-size:14px}
+.lesson{padding:16px 18px;margin:18px 0 0;background:var(--panel);border:1px solid var(--hair);border-radius:10px;color:var(--ink-soft);font-size:14px}.lesson strong{color:var(--ink);display:block;font-size:16px;margin-bottom:4px}.lesson p{max-width:88ch}.review-actions{display:flex;gap:12px;align-items:center;margin:18px 0 4px;flex-wrap:wrap}.review-actions p{color:var(--ink-soft);font-size:14px}.nota{margin-top:18px;background:transparent;border:1px solid var(--hair);border-radius:8px;font-size:14px;line-height:1.6}.nota .sel{font-size:11px;letter-spacing:0}.notice{display:flex;align-items:center;justify-content:space-between;gap:20px;border-top:1px solid var(--hair);padding:14px 28px;margin-top:auto;color:var(--ink-soft);font-size:13px}.notice .btn{min-height:26px;padding:2px 0}.rodape{max-height:none;background:var(--bg)}.rodape-head{padding:7px 28px}#logBody{max-height:170px}.modal-cx{border-radius:14px}.modal-cx div{font-size:15px}.modal-cx h5{font-family:'Outfit',sans-serif;font-size:18px}.modal-close{display:flex;justify-content:flex-end;margin-bottom:16px}
+@media(max-width:1200px){.tagline{display:none}.studio-main{padding:22px 20px}}
+@media(max-width:950px){#app>header{gap:12px;padding:16px 20px}.badge{font-size:12px}.wordmark{font-size:24px}.welcome{padding-top:34px}.welcome-actions{gap:26px}.learning-path{gap:16px}.duplo{grid-template-columns:1fr}.rail{flex-direction:column}.rail .actions{order:-1}.settings{max-width:100%}.caixa textarea{height:310px;min-height:260px}.painel-corpo{grid-template-columns:1fr}.painel-corpo>div{max-height:none}}
+@media(max-width:620px){#app>header{padding:14px 16px}.brand-symbol{width:27px;height:27px}.wordmark{font-size:22px}.badge{width:100%;order:5}.flow{padding:10px;gap:6px}.flow span{padding:5px 8px;font-size:13px}.flow i{width:12px}.welcome{padding:30px 20px}.welcome h1{font-size:34px}.welcome-intro p{font-size:17px}.learning-path{flex-direction:column;gap:12px;margin:22px 0}.welcome-actions{grid-template-columns:1fr;gap:18px}.demo-start{padding:22px}.import-start{padding:6px 0}.studio-main{padding:24px 14px}.studio-heading{align-items:flex-start;gap:10px}.studio-heading h1{font-size:27px}.studio-heading p{font-size:14px}.tabs{gap:2px}.tabs button{font-size:13px;padding:8px 10px}.caixa-head{flex-wrap:wrap}.caixa textarea{font-size:15px}.metricas{gap:18px}.metrica{min-width:100px}.notice{padding:14px 18px;flex-wrap:wrap;gap:8px}.rodape-head{padding:7px 18px}.modal{padding:12px}.modal-cx{padding:20px}}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header>
+    <svg class="brand-symbol" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M20 2 33 7 38 20 33 33 20 38 7 33 2 20 7 7Z"/><path d="m20 2 10 15-4 17M38 20 20 25 7 7M7 33l7-17L33 7M2 20l18 18"/></svg>
+    <div class="wordmark"><span class="de">DeFace </span><span class="rt">RT</span><span class="brand-type">DATA</span></div>
+    <div class="tagline">radioterapia.ai</div>
+    <div class="spacer"></div>
+    <div class="badge" id="badgeRede" role="status"><b>&#9679;</b>&nbsp; Verificando isolamento…</div>
+    <button class="btn text" id="btnSobre">Ajuda</button>
+  </header>
+
+  <nav class="flow" aria-label="Etapas da aprendizagem"><span id="etapaPseudonimizar" aria-current="step">Pseudonimizar</span><i aria-hidden="true"></i><span id="etapaRevisar">Revisar</span><i aria-hidden="true"></i><span id="etapaRestaurar">Restaurar</span></nav>
+  <section class="welcome" id="boasVindas" aria-labelledby="tituloInicio">
+    <div class="welcome-intro"><h1 id="tituloInicio">Entenda o que um texto pode revelar.</h1><p>Troque identificadores por rótulos, investigue o que escapou e descubra por que pseudonimizar não é anonimizar.</p></div>
+    <div class="learning-path" aria-label="O que você vai aprender"><div><b>1</b><span>Veja os identificadores mudarem</span></div><div><b>2</b><span>Revise o que ainda identifica</span></div><div><b>3</b><span>Teste a reversão dos rótulos</span></div></div>
+    <div class="welcome-actions">
+      <div class="demo-start"><h2>Aprenda com um texto sintético</h2><p>Um caso inventado para testar nomes, documentos, datas e a restauração. Nenhum dado de paciente.</p><button class="btn primary" id="btnExemplo">Explorar texto sintético</button><p class="example-detail">Exemplo autoral · funciona offline · nenhuma IA é utilizada</p></div>
+      <div class="import-start"><h2>Ou trabalhe com seu texto</h2><p>Cole um texto nesta aba. O processamento é local e o resultado sempre precisa de revisão.</p><button class="btn" id="btnMeuTexto">Usar meu texto</button><p class="example-detail">O mapa de correspondência existe apenas na memória desta aba.</p></div>
+    </div>
+  </section>
+  <div id="prog"></div>
+
+  <main class="studio-main" id="estudio" hidden>
+    <div class="studio-heading"><div><h1 id="tituloEstudio">Explore o texto.</h1><p id="dicaEstudio">Leia o original e veja como os identificadores serão substituídos.</p><div class="study-label" id="tipoEstudo"></div></div><button class="btn text" id="btnNovo">Novo texto</button></div>
+    <div class="rail">
+      <details class="settings"><summary>Ajustes avançados</summary><div class="settings-content"><label class="chk"><input type="checkbox" id="optDatas" checked> Trocar datas</label><label class="chk"><input type="checkbox" id="optAgressivo"> Nomes sem prenome conhecido</label><div class="seed-controls"><label for="seed">Semente</label><input type="text" id="seed" size="11" spellcheck="false"><button class="btn" id="btnSeed">Sortear</button></div></div><p class="help">A semente torna os rótulos reproduzíveis. Ela não é senha nem torna o texto anônimo.</p></details>
+      <div class="actions"><button class="btn primary" id="btnRun" disabled>Pseudonimizar texto</button><button class="btn" id="btnLimpar">Limpar tudo</button></div>
+    </div>
+    <div class="tabs" id="tabs" role="tablist" aria-label="Trabalhar com o texto">
+      <button role="tab" id="abaPs" data-v="ps" aria-selected="true" aria-controls="Vps">Texto e revisão</button>
+      <button role="tab" id="abaRev" data-v="rev" aria-selected="false" aria-controls="Vrev" disabled>Restaurar rótulos</button>
+    </div>
+
+    <!-- ============ PSEUDONIMIZAR ============ -->
+    <div class="view on" id="Vps" role="tabpanel" aria-labelledby="abaPs">
+      <div class="duplo somente-entrada" id="textosPs">
+        <div class="caixa">
+          <div class="caixa-head">
+            <label for="txtEntrada">Original</label>
+            <span class="spacer"></span>
+            <span class="kick" id="infoEntrada">0 caracteres</span>
+          </div>
+          <textarea id="txtEntrada" spellcheck="false"
+            placeholder="Cole seu texto aqui.&#10;&#10;O texto permanece nesta aba e precisa ser revisado após a pseudonimização."></textarea>
+        </div>
+        <div class="caixa" id="caixaResultado" hidden>
+          <div class="caixa-head">
+            <label for="txtSaida">Resultado para revisar</label>
+            <span class="spacer"></span>
+            <button class="btn" id="btnCopiar" disabled>Copiar</button>
+          </div>
+          <textarea id="txtSaida" spellcheck="false" readonly
+            placeholder="O texto pseudonimizado aparece aqui."></textarea>
+        </div>
+      </div>
+
+      <div class="painel" id="painelRevisao" hidden>
+        <div class="painel-head"><div><h2>O que mudou — e o que pode ter escapado</h2><p>As contagens mostram substituições, não uma medida de anonimização.</p></div></div>
+        <div class="metricas" id="metricas">
+          <div class="metrica"><span class="v" id="mTrocas">—</span><span class="r">substituições</span></div>
+          <div class="metrica"><span class="v" id="mEntidades">—</span><span class="r">entidades distintas</span></div>
+          <div class="metrica alerta"><span class="v" id="mSuspeitas">—</span><span class="r">para você revisar</span></div>
+          <div class="metrica"><span class="v" id="mTempo">—</span><span class="r">tempo</span></div>
+        </div>
+        <div class="painel-corpo">
+          <div>
+            <table id="tblTrocas">
+              <thead><tr><th>Categoria</th><th>Risco</th><th style="text-align:right">Entidades</th><th style="text-align:right">Trocas</th></tr></thead>
+              <tbody></tbody>
+            </table>
+            <div class="vazio" id="vazioTrocas">Nada processado ainda.</div>
+          </div>
+          <div>
+            <div class="kick" style="margin-bottom:8px">Trechos para revisão manual</div>
+            <div id="listaSuspeitas"></div>
+            <div class="vazio" id="vazioSuspeitas">Nada processado ainda.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="review-actions" id="acoesRevisao" hidden><button class="btn" id="btnTestarRestauracao" disabled>Testar restauração</button><p>Use o resultado como resposta simulada, sem consultar uma IA.</p></div>
+      <aside class="lesson" aria-live="polite"><strong id="tituloLicao">Antes de começar</strong><p id="textoLicao">Procure nomes, documentos e datas no original. Depois, observe o que muda e o que o programa deixa passar.</p></aside>
+    </div>
+
+    <!-- ============ REVERTER ============ -->
+    <div class="view" id="Vrev" role="tabpanel" aria-labelledby="abaRev">
+      <div class="duplo">
+        <div class="caixa">
+          <div class="caixa-head">
+            <label for="txtResposta" id="rotuloResposta">Texto com os rótulos</label>
+            <span class="spacer"></span>
+            <button class="btn primary" id="btnReverter" disabled>Restaurar nomes</button>
+          </div>
+          <textarea id="txtResposta" spellcheck="false"
+            placeholder="Cole um texto que contenha os rótulos desta sessão.&#10;&#10;Também é possível usar Testar restauração para uma resposta simulada, sem IA."></textarea>
+        </div>
+        <div class="caixa">
+          <div class="caixa-head">
+            <label for="txtRevertido">Texto restaurado</label>
+            <span class="spacer"></span>
+            <button class="btn" id="btnCopiarRev" disabled>Copiar</button>
+          </div>
+          <textarea id="txtRevertido" spellcheck="false" readonly
+            placeholder="O texto restaurado aparece aqui."></textarea>
+        </div>
+      </div>
+      <div class="nota">
+        <span class="sel">Memória local</span>
+        <span id="infoMapa">O mapa de rótulos vive apenas na memória desta aba. Fechar a página
+          o apaga, e aí a correspondência não volta mais — de propósito.</span>
+      </div>
+    </div>
+  </main>
+
+  <footer class="notice"><span>Uso educacional · Pseudonimização não é anonimização</span><button class="btn text" id="btnLimites">Privacidade e limites</button></footer>
+
+  <div class="rodape">
+    <div class="rodape-head" id="logHead" role="button" tabindex="0" aria-expanded="false" aria-controls="logBody">
+      <span class="kick">Registro de execução</span>
+      <span class="spacer"></span>
+      <span id="logLast"></span>
+      <span class="kick" id="logCaret">&#9662;</span>
+    </div>
+    <div id="logBody"></div>
+  </div>
+</div>
+
+<div class="modal" id="sobreFundo" role="dialog" aria-modal="true" aria-label="Privacidade e limites">
+  <div class="modal-cx"><div class="modal-close"><button class="btn" id="btnFecharSobre">Fechar</button></div><div id="sobreBox"></div></div>
+</div>
+
+<script>
+__JS__
+</script>
+</body>
+</html>

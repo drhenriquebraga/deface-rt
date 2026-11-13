@@ -1,0 +1,53 @@
+{
+  "revisao": "ce01a802b2320a703d0bb48e16870315e35640ee",
+  "resultados": [
+    {
+      "nome": "TC_PUBLICA_FANTOMA.zip",
+      "arquivos": 44,
+      "dimensoes": [
+        140,
+        140,
+        44
+      ],
+      "textos_verificados": {
+        "00020013": "PYDICOM 3.0.1",
+        "00080008": "DERIVED\\SECONDARY",
+        "00080060": "CT",
+        "0008103E": "DEMO planning CT (synthetic phantom)",
+        "00100010": "PHANTOM^SYNTHETIC",
+        "00100020": "DEMO-PHANTOM-001",
+        "00100030": "",
+        "00204000": "SYNTHETIC PHANTOM - RESEARCH / NOT FOR DIAGNOSIS",
+        "00280004": "MONOCHROME2",
+        "00281054": "HU"
+      },
+      "altura_mm": 120,
+      "marcos_suspeitos": false,
+      "observacao": "Fantoma público sem nariz, não mede eficácia de desfiguração em humanos."
+    },
+    {
+      "nome": "CBCT_PUBLICA_FANTOMA.zip",
+      "arquivos": 44,
+      "dimensoes": [
+        140,
+        140,
+        44
+      ],
+      "textos_verificados": {
+        "00020013": "PYDICOM 3.0.1",
+        "00080008": "DERIVED\\SECONDARY",
+        "00080060": "CT",
+        "0008103E": "DEMO CBCT (synthetic phantom)",
+        "00100010": "PHANTOM^SYNTHETIC",
+        "00100020": "DEMO-PHANTOM-001",
+        "00100030": "",
+        "00204000": "SYNTHETIC PHANTOM - RESEARCH / NOT FOR DIAGNOSIS",
+        "00280004": "MONOCHROME2",
+        "00281054": "HU"
+      },
+      "altura_mm": 120,
+      "marcos_suspeitos": false,
+      "observacao": "Fantoma público sem nariz, não mede eficácia de desfiguração em humanos."
+    }
+  ]
+}

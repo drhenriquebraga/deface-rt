@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<!-- Política de segurança de conteúdo: o navegador IMPEDE qualquer saída de rede.
+     connect-src 'none'  bloqueia fetch, XMLHttpRequest, WebSocket, EventSource e sendBeacon.
+     form-action 'none'  bloqueia envio de formulário.
+     Não é promessa do autor: é regra que o navegador aplica, aqui e em qualquer servidor.
+     Se algum download parar de funcionar, veja docs/03_PRIVACIDADE.md § Diagnóstico. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src data:; img-src 'self' data: blob:; connect-src 'none'; form-action 'none'; object-src 'none'; base-uri 'none'">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DeFace RT Dicom — pseudonimização de imagens DICOM</title>
+<style>
+/* ==== FONTES EMBUTIDAS ==== */
+@font-face{font-family:'Outfit';font-weight:400;font-style:normal;font-display:block;src:url(data:font/woff;base64,__OUTFIT_R__) format('woff')}
+@font-face{font-family:'Outfit';font-weight:700;font-style:normal;font-display:block;src:url(data:font/woff;base64,__OUTFIT_B__) format('woff')}
+@font-face{font-family:'JBMono';font-weight:400;font-style:normal;font-display:block;src:url(data:font/woff;base64,__JB_R__) format('woff')}
+
+/* ==== SISTEMA NOCTURNE — perfil radioterapia.ai ==== */
+:root{
+  --bg:#050A18; --bg-2:#070D1C; --panel:#080F22; --panel-2:#0B142C;
+  --halo-a:#070F24; --halo-b:#081428;
+  --grad-a:#0A2A6B; --grad-b:#24D3EE;
+  --ink:#FFFFFF; --ink-soft:#9AA8C6; --ink-dim:#63739A;
+  --hair:#18203A; --rule:#26314F;
+  --crit:#FF5C7A; --alto:#FFA23A; --medio:#FFD97A; --baixo:#4FD1A5;
+  --r:3px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  background:var(--bg); color:var(--ink);
+  font-family:'Outfit',system-ui,sans-serif; font-weight:400;
+  font-size:14px; line-height:1.35; overflow:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+/* Sem halo de fundo: a tela de trabalho e um negatoscopio, e nada atras da
+   imagem deve brilhar. O que sobra e uma unica veladura, quase imperceptivel,
+   so para o preto nao ficar chapado. */
+body::before{
+  content:''; position:fixed; inset:0; pointer-events:none; z-index:0;
+  background:radial-gradient(1200px 800px at 50% -20%, var(--halo-a) 0%, transparent 70%);
+  opacity:.5;
+}
+.mono{font-family:'JBMono',ui-monospace,monospace}
+.kick{font-family:'JBMono',ui-monospace,monospace;font-size:11px;letter-spacing:.01em;
+  color:var(--ink-dim)}
+.grad{background:linear-gradient(96deg,var(--grad-a) 0%,var(--grad-b) 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+
+#app{position:relative;z-index:1;height:100%;display:flex;flex-direction:column}
+
+/* ==== CABECALHO PADRAO — identico nos dois aplicativos ====
+   build/montar.py compara os dois shells e recusa a montagem se divergirem:
+   o cabecalho e a assinatura da familia e nao pode andar sozinho num deles. */
+header{
+  display:flex;align-items:baseline;gap:20px;flex-wrap:wrap;
+  padding:14px 22px 12px;border-bottom:1px solid var(--hair);
+}
+header .spacer{flex:1}
+.wordmark{font-weight:700;font-size:27px;letter-spacing:-.022em;line-height:1}
+.wordmark .de{color:#fff}
+.wordmark .rt{background:linear-gradient(96deg,var(--grad-a) 0%,var(--grad-b) 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.tagline{color:var(--ink-soft);font-size:12.5px}
+.badge{border:1px solid var(--hair);border-radius:999px;padding:4px 12px;
+  font-family:'JBMono',monospace;font-size:10.5px;letter-spacing:.01em;
+  color:var(--ink-dim);white-space:nowrap}
+.badge b{color:var(--baixo);font-weight:400}
+@media (max-width:1080px){ .wordmark{font-size:23px} }
+/* ==== FIM DO CABECALHO PADRAO ==== */
+
+/* ==== BARRA DE COMANDO ==== */
+/* A rail quebra em vez de rolar: com overflow-x os dois ultimos passos --
+   entre eles o botao de processar -- ficavam fora da tela em 1440px, e nada
+   indicava que havia mais coisa a direita. Controle escondido e controle que
+   nao existe. */
+.rail{display:flex;flex-wrap:wrap;gap:0;border-bottom:1px solid var(--hair);
+  background:var(--bg-2)}
+.step{padding:11px 20px;border-right:1px solid var(--hair);display:flex;
+  flex-direction:column;gap:7px;min-width:max-content}
+.step .kick{display:flex;align-items:center;gap:7px}
+.step .n{color:var(--grad-b);opacity:.85}
+.step.grow{flex:1}
+/* o passo de acao nao tem rotulo: alinha pelo rodape do vizinho */
+.step.acao{justify-content:flex-end;margin-left:auto;border-right:0}
+
+.seg{display:inline-flex;border:1px solid var(--hair);border-radius:var(--r);overflow:hidden}
+.seg button{background:transparent;border:0;color:var(--ink-soft);
+  font-family:'JBMono',monospace;font-size:11px;letter-spacing:.1em;
+  padding:6px 15px;cursor:pointer;transition:.16s}
+.seg button+button{border-left:1px solid var(--hair)}
+.seg button:hover{color:var(--ink);background:rgba(36,211,238,.07)}
+.seg button[aria-pressed="true"]{color:#04121c;font-weight:400;
+  background:linear-gradient(96deg,var(--grad-a),var(--grad-b))}
+
+.btn{background:transparent;border:1px solid var(--hair);border-radius:var(--r);
+  color:var(--ink-soft);font-family:'JBMono',monospace;font-size:11px;
+  letter-spacing:.1em;padding:6px 14px;cursor:pointer;transition:.16s;white-space:nowrap}
+.btn:hover:not(:disabled){color:var(--ink);border-color:var(--rule);background:rgba(36,211,238,.07)}
+.btn:disabled{opacity:.3;cursor:not-allowed}
+.btn.primary{border-color:transparent;color:#04121c;
+  background:linear-gradient(96deg,var(--grad-a),var(--grad-b))}
+.btn.primary:hover:not(:disabled){filter:brightness(1.13)}
+.btn.primary:disabled{background:#16203c;color:var(--ink-dim)}
+
+.drop{border:1px dashed var(--rule);border-radius:var(--r);padding:7px 15px;
+  color:var(--ink-dim);font-family:'JBMono',monospace;font-size:10.5px;
+  letter-spacing:.06em;cursor:pointer;transition:.16s;display:flex;align-items:center;gap:11px}
+.drop:hover,.drop.over{border-color:var(--grad-b);color:var(--ink);background:rgba(36,211,238,.06)}
+.drop b{color:var(--ink);font-weight:400}
+
+.checks{display:flex;gap:5px;flex-wrap:wrap;align-items:center}
+.chk{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--hair);
+  border-radius:var(--r);padding:5px 11px;cursor:pointer;transition:.16s;
+  font-size:11.5px;color:var(--ink-soft);white-space:nowrap;user-select:none}
+.chk:hover{border-color:var(--rule);color:var(--ink)}
+.chk input{appearance:none;width:11px;height:11px;border:1px solid var(--rule);
+  border-radius:2px;cursor:pointer;flex:none;transition:.16s}
+.chk input:checked{background:linear-gradient(96deg,var(--grad-a),var(--grad-b));border-color:transparent}
+.chk:has(input:checked){color:var(--ink);border-color:rgba(36,211,238,.42);background:rgba(36,211,238,.06)}
+
+input[type=text],input[type=number],select{
+  background:var(--panel-2);border:1px solid var(--hair);border-radius:var(--r);
+  color:var(--ink);font-family:'JBMono',monospace;font-size:11px;padding:6px 9px;outline:0}
+input[type=text]:focus,select:focus{border-color:var(--grad-b)}
+select{cursor:pointer}
+input[type=range]{appearance:none;height:2px;background:var(--rule);border-radius:2px;outline:0;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{appearance:none;width:11px;height:11px;border-radius:50%;
+  background:var(--grad-b);cursor:pointer;box-shadow:0 0 0 3px rgba(36,211,238,.16)}
+
+/* ==== CORPO: DOIS PAINÉIS ==== */
+.stage{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:1px;
+  background:var(--hair);min-height:0}
+.pane{background:var(--panel);display:flex;flex-direction:column;min-height:0;min-width:0}
+.pane-head{display:flex;align-items:center;gap:12px;padding:9px 16px;
+  border-bottom:1px solid var(--hair);min-height:41px;flex-wrap:wrap}
+.pane-head .kick{flex:none}
+.pane-head .spacer{flex:1}
+.tabs{display:flex;gap:2px}
+.tabs button{background:transparent;border:0;border-bottom:1px solid transparent;
+  color:var(--ink-dim);font-family:'JBMono',monospace;font-size:10px;letter-spacing:.01em;
+  padding:5px 9px;cursor:pointer;transition:.16s}
+.tabs button:hover{color:var(--ink-soft)}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--grad-b)}
+.pane-body{flex:1;position:relative;min-height:0;overflow:hidden}
+.view{position:absolute;inset:0;display:none;flex-direction:column;min-height:0}
+.view.on{display:flex}
+
+/* ==== VISOR ==== */
+.canvas-wrap{flex:1;position:relative;display:flex;align-items:center;justify-content:center;
+  min-height:0;background:radial-gradient(circle at 50% 46%,#081228 0%,#04070f 78%);overflow:hidden}
+.canvas-wrap canvas{max-width:100%;max-height:100%;display:block;image-rendering:auto}
+.orbit{position:absolute;inset:0;pointer-events:none;opacity:.5}
+.mpr-grid{flex:1;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;
+  gap:1px;background:var(--hair);min-height:0}
+.mpr-cell{position:relative;background:#04070f;display:flex;align-items:center;
+  justify-content:center;overflow:hidden;min-height:0}
+.mpr-cell canvas{max-width:100%;max-height:100%;display:block}
+.mpr-cell .lbl{position:absolute;top:6px;left:8px;font-family:'JBMono',monospace;
+  font-size:9px;letter-spacing:.08em;color:var(--ink-dim);text-transform:uppercase;
+  pointer-events:none;text-shadow:0 1px 3px #000}
+.mpr-cell .idx{position:absolute;bottom:6px;right:8px;font-family:'JBMono',monospace;
+  font-size:9px;color:var(--ink-dim);pointer-events:none;text-shadow:0 1px 3px #000}
+.mpr-cell input[type=range]{position:absolute;bottom:7px;left:8px;right:64px;width:auto}
+.cell-note{grid-column:2;grid-row:2;background:var(--panel);padding:13px 15px;
+  display:flex;flex-direction:column;gap:9px;overflow:auto;min-height:0}
+
+.toolbar{display:flex;align-items:center;gap:14px;padding:8px 16px;
+  border-top:1px solid var(--hair);flex-wrap:wrap;min-height:38px}
+.toolbar label{display:flex;align-items:center;gap:7px;font-family:'JBMono',monospace;
+  font-size:9.5px;letter-spacing:.01em;color:var(--ink-dim)}
+.toolbar label input[type=range]{width:82px}
+.toolbar .val{color:var(--ink-soft);min-width:38px;text-align:right}
+
+/* ==== TABELA DE CABEÇALHOS ==== */
+.scroll{flex:1;overflow:auto;min-height:0}
+.scroll::-webkit-scrollbar{width:9px;height:9px}
+.scroll::-webkit-scrollbar-track{background:transparent}
+.scroll::-webkit-scrollbar-thumb{background:var(--hair);border-radius:9px}
+.scroll::-webkit-scrollbar-thumb:hover{background:var(--rule)}
+table{width:100%;border-collapse:collapse;font-size:11.5px}
+thead th{position:sticky;top:0;background:var(--panel-2);z-index:2;
+  font-family:'JBMono',monospace;font-size:9px;letter-spacing:.01em;
+  color:var(--ink-dim);font-weight:400;text-align:left;padding:8px 12px;
+  border-bottom:1px solid var(--hair)}
+tbody td{padding:6px 12px;border-bottom:1px solid rgba(34,46,74,.42);
+  vertical-align:top;color:var(--ink-soft)}
+tbody tr:hover td{background:rgba(36,211,238,.045)}
+td.tag{font-family:'JBMono',monospace;font-size:10.5px;color:var(--ink-dim);white-space:nowrap}
+td.nm{color:var(--ink)}
+td.vl{font-family:'JBMono',monospace;font-size:10.5px;word-break:break-word;max-width:250px}
+td.vl.gone{color:var(--ink-dim);font-style:italic}
+.pill{display:inline-block;font-family:'JBMono',monospace;font-size:8.5px;letter-spacing:.01em;
+  padding:2px 7px;border-radius:999px;border:1px solid;white-space:nowrap;}
+.pill.crit{color:var(--crit);border-color:rgba(255,92,122,.4);background:rgba(255,92,122,.09)}
+.pill.alto{color:var(--alto);border-color:rgba(255,162,58,.4);background:rgba(255,162,58,.09)}
+.pill.medio{color:var(--medio);border-color:rgba(255,217,122,.36);background:rgba(255,217,122,.08)}
+.pill.baixo{color:var(--baixo);border-color:rgba(79,209,165,.34);background:rgba(79,209,165,.08)}
+.filters{display:flex;gap:5px;align-items:center;flex-wrap:wrap}
+
+/* ==== MÉTRICAS ==== */
+.metrics{padding:18px 20px;display:flex;flex-direction:column;gap:16px;overflow:auto}
+.verdict{border:1px solid var(--hair);border-left:2px solid var(--grad-b);border-radius:var(--r);
+  padding:13px 16px;background:rgba(10,23,48,.5)}
+.verdict h4{font-size:14.5px;font-weight:700;margin-bottom:5px;letter-spacing:-.01em}
+.verdict p{color:var(--ink-soft);font-size:12.5px;line-height:1.5}
+.mgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:1px;
+  background:var(--hair);border:1px solid var(--hair);border-radius:var(--r);overflow:hidden}
+.mcell{background:var(--panel);padding:12px 14px;display:flex;flex-direction:column;gap:5px}
+.mcell .k{font-family:'JBMono',monospace;font-size:8.5px;letter-spacing:.01em;
+  color:var(--ink-dim);line-height:1.35}
+.mcell .v{font-size:24px;font-weight:700;letter-spacing:-.03em;line-height:1;
+  background:linear-gradient(96deg,var(--grad-a),var(--grad-b));
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.mcell .v.flat{background:none;color:var(--ink)}
+.mcell .v small{font-size:11px;font-weight:400;color:var(--ink-soft);
+  -webkit-text-fill-color:var(--ink-soft);margin-left:3px}
+.mcell .s{font-size:10.5px;color:var(--ink-dim);line-height:1.35}
+
+/* ==== VAZIO / PROGRESSO ==== */
+.empty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:15px;text-align:center;padding:38px;color:var(--ink-dim)}
+.empty .big{font-size:15px;color:var(--ink-soft);max-width:330px;line-height:1.5}
+.empty svg{opacity:.34}
+.bar{height:2px;background:var(--hair);border-radius:2px;overflow:hidden;width:100%;max-width:280px}
+.bar i{display:block;height:100%;width:0;border-radius:2px;
+  background:linear-gradient(96deg,var(--grad-a),var(--grad-b));transition:width .22s}
+
+/* ==== REGISTRO ==== */
+.logbar{border-top:1px solid var(--hair);background:rgba(5,10,24,.9);display:flex;
+  flex-direction:column;flex:none}
+.logbar .lh{display:flex;align-items:center;gap:12px;padding:6px 18px;cursor:pointer;user-select:none}
+.logbar .lh:hover .kick{color:var(--ink-soft)}
+.logbar .lh .spacer{flex:1}
+#logBody{height:0;overflow:auto;transition:height .2s;font-family:'JBMono',monospace;
+  font-size:10.5px;line-height:1.65;padding:0 18px}
+#logBody.open{height:132px;padding:2px 18px 10px}
+#logBody div{color:var(--ink-dim);white-space:pre-wrap}
+#logBody div .t{color:#3d4b70}
+#logBody div.ok{color:var(--baixo)}
+#logBody div.warn{color:var(--alto)}
+#logBody div.err{color:var(--crit)}
+#logBody div.hl{color:var(--grad-b)}
+
+/* ==== AVISO ==== */
+.notice{padding:10px 20px;border-top:1px solid var(--hair);
+  background:rgba(255,162,58,.05);color:var(--ink-soft);font-size:11.5px;
+  display:flex;gap:11px;align-items:flex-start}
+.notice .pill{flex:none;margin-top:1px}
+.notice a{color:var(--grad-b);text-decoration:none;border-bottom:1px solid rgba(36,211,238,.3)}
+
+/* ==== MODAL ==== */
+.modal{position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;
+  background:rgba(2,5,12,.82);padding:24px}
+.modal.on{display:flex}
+.sheet{background:var(--panel);border:1px solid var(--rule);border-radius:var(--r);
+  max-width:600px;width:100%;max-height:84vh;display:flex;flex-direction:column;overflow:hidden;
+  box-shadow:0 26px 80px rgba(0,0,0,.62)}
+.sheet header{padding:15px 22px;border-bottom:1px solid var(--hair);background:transparent}
+.sheet .sb{padding:20px 22px;overflow:auto;display:flex;flex-direction:column;gap:14px;
+  color:var(--ink-soft);font-size:13px;line-height:1.55}
+.sheet .sb h5{color:var(--ink);font-size:12.5px;font-weight:700;margin-bottom:4px}
+.sheet .sb ul{padding-left:17px;display:flex;flex-direction:column;gap:5px}
+.sheet .sf{padding:13px 22px;border-top:1px solid var(--hair);display:flex;
+  justify-content:flex-end;gap:9px}
+
+@media (max-width:1080px){
+  .stage{grid-template-columns:1fr;grid-template-rows:1fr 1fr}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* ==== ESTÚDIO: tarefa e aprendizagem antes dos controles ==== */
+:root{--bg:#081222;--bg-2:#0b1728;--panel:#111e32;--panel-2:#15243b;--ink:#f3f6fc;--ink-soft:#b3c2d9;--ink-dim:#97aaca;--hair:#293b53;--rule:#405875;--grad-a:#7b9cf5;--grad-b:#7b9cf5;--baixo:#52d3b1;--r:10px}
+body{font-size:15px;line-height:1.5;overflow:auto;background:var(--bg)}
+body::before{display:none}
+#app{height:auto;min-height:100vh}
+[hidden]{display:none!important}
+button,input,select{font:inherit}
+button:focus-visible,a:focus-visible,summary:focus-visible,input:focus-visible,select:focus-visible,[tabindex]:focus-visible{outline:3px solid #a9c0ff;outline-offset:4px}
+::selection{background:#345492;color:#fff}
+::-webkit-scrollbar{width:9px;height:9px}::-webkit-scrollbar-thumb{background:var(--rule);border-radius:8px}
+.kick{font-family:'Outfit',sans-serif;font-size:13px;letter-spacing:0;color:var(--ink-dim)}
+#app>header{align-items:center;gap:18px;padding:18px 28px;min-height:78px}
+.brand-symbol{width:35px;height:35px;flex:none;color:var(--ink)}
+.wordmark{font-size:26px;letter-spacing:-.025em}
+.wordmark .rt,.grad{color:var(--ink);background:none;-webkit-text-fill-color:var(--ink)}
+.brand-type{font-size:12px;font-weight:400;color:var(--ink-soft);display:block;margin-top:5px;letter-spacing:.05em}
+.tagline{font-size:17px;border-left:1px solid var(--rule);padding-left:20px}
+.badge{font-family:'Outfit',sans-serif;border:0;font-size:14px;letter-spacing:0;padding:0;color:var(--ink-soft)}
+.btn{font-family:'Outfit',sans-serif;font-size:14px;letter-spacing:0;min-height:40px;padding:9px 15px;border-color:var(--rule);border-radius:8px;white-space:normal}
+.btn.primary{background:var(--grad-b);color:#09172f;font-weight:700;border:1px solid var(--grad-b)}
+.btn:disabled{opacity:.5}.btn.primary:disabled{background:#24344d;color:#a2b2cb;border-color:#24344d}
+.btn.text{border-color:transparent;color:#a9c0ff;background:transparent;padding:5px 10px}
+.flow{display:flex;align-items:center;justify-content:center;gap:20px;padding:14px 24px;border-bottom:1px solid var(--hair);color:var(--ink-dim)}
+.flow span{padding:6px 16px;border-radius:7px;font-size:15px}.flow span[aria-current=step]{background:var(--grad-b);color:#09172f;font-weight:700}.flow i{height:1px;width:36px;background:var(--rule)}
+.welcome{width:min(1060px,100%);margin:0 auto;padding:52px 30px 44px;flex:1}
+.welcome-intro{max-width:750px}.welcome h1{font-size:clamp(32px,3.3vw,48px);line-height:1.12;letter-spacing:-.025em;margin:0 0 18px}.welcome-intro p{font-size:19px;color:var(--ink-soft);max-width:650px;line-height:1.6}
+.learning-path{display:flex;gap:30px;margin:28px 0 32px;padding:20px 0;border-top:1px solid var(--hair);border-bottom:1px solid var(--hair)}
+.learning-path div{flex:1;display:flex;align-items:baseline;gap:11px}.learning-path b{color:var(--grad-b);font-size:17px}.learning-path span{color:var(--ink-soft);font-size:15px}
+.welcome-actions{display:grid;grid-template-columns:1.2fr 1fr;gap:38px;align-items:start}.demo-start{padding:26px;background:var(--panel);border:1px solid var(--hair);border-radius:14px}.demo-start h2,.import-start h2{font-size:23px;letter-spacing:-.015em;margin-bottom:8px}.demo-start p,.import-start p{color:var(--ink-soft);margin-bottom:20px;max-width:46ch}.demo-start .btn.primary{width:100%;font-size:17px;padding:13px 18px}.demo-start .seg{margin-bottom:20px}.example-detail{font-size:13px!important;margin:15px 0 0!important;color:var(--ink-dim)!important}.import-start{padding:22px 0}.import-start .seg{margin-bottom:18px}.import-start .drop{min-height:88px;justify-content:center;text-align:center;font-size:14px;font-family:'Outfit',sans-serif;letter-spacing:0;padding:18px}.file-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.field-title{font-size:13px;color:var(--ink-dim);display:block;margin-bottom:8px}.seg button{font:inherit;font-size:14px;letter-spacing:0;padding:8px 17px}.seg button[aria-pressed=true]{background:var(--grad-b);color:#09172f;font-weight:700}.welcome-status{margin-top:20px;color:var(--ink-soft);min-height:24px;overflow-wrap:anywhere}.welcome-status.error{color:#ffb0bf}
+.studio-main{padding:24px 28px 20px;flex:1}.studio-heading{display:flex;align-items:center;gap:24px;justify-content:space-between;margin-bottom:20px}.studio-heading h1{font-size:32px;line-height:1.2;letter-spacing:-.02em;margin-bottom:7px}.studio-heading p{color:var(--ink-soft);font-size:16px}.study-label{font-size:13px;color:var(--baixo);margin-top:8px}.workspace{display:grid;grid-template-columns:minmax(0,1fr) 276px;gap:24px}.workspace-visual{min-width:0}.global-tabs{display:flex;gap:12px;border-top:1px solid var(--hair);border-bottom:1px solid var(--hair);padding:12px 0;margin-bottom:16px;flex-wrap:wrap}.global-tabs button{background:transparent;border:0;padding:9px 16px;color:var(--ink-soft);border-radius:7px;cursor:pointer;font-size:15px}.global-tabs button[aria-selected=true]{background:var(--grad-b);color:#09172f;font-weight:700}.stage{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto;gap:14px;min-height:550px;height:clamp(520px,63vh,780px);background:transparent}.pane{border:1px solid var(--rule);border-radius:10px;overflow:hidden;min-width:0}.pane-head{padding:12px 16px;min-height:53px;gap:8px}.pane-head>.kick:first-child{font-size:19px;font-weight:700;color:var(--ink)}.pane-head #srcInfo{font-size:11px;margin-left:auto;max-width:52%;text-align:right}.pane-head .tabs{display:none}.canvas-wrap{background:#080f19}.canvas-wrap canvas{object-fit:contain;width:auto!important;height:100%!important;max-width:100%;max-height:100%}.mpr-grid{grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr}.mpr-cell .lbl,.mpr-cell .idx{font-size:11px;color:#c0cde0}.cell-note{padding:15px;gap:12px}.toolbar{gap:10px;padding:10px 12px;min-height:45px;background:#0e1b2d}.toolbar label{font-family:'Outfit',sans-serif;font-size:12px;color:var(--ink-soft)}.toolbar label input[type=range]{width:60px}.toolbar .kick{font-size:12px}.toolbar .btn{font-size:12px;min-height:30px;padding:4px 9px}.toolbar .val{min-width:24px}.toolbar:has(#thr){display:grid;grid-template-columns:1fr 1fr}.toolbar:has(#thr) label:first-child{grid-column:1/-1}.toolbar:has(#thr) label:first-child input{flex:1}.toolbar:has(#thr) label input{width:55px}
+.inspector{border-left:1px solid var(--hair);padding-left:24px;display:flex;flex-direction:column;gap:20px;min-width:0}.inspector h2{font-size:23px;letter-spacing:-.02em}.inspector label[for=selMet]{display:block;font-size:14px;margin-bottom:8px}.inspector select{width:100%;min-height:44px;font-family:'Outfit',sans-serif;font-size:14px}.inspector details{border-top:1px solid var(--hair);padding-top:15px}.inspector summary{cursor:pointer;color:var(--ink);font-size:15px}.inspector .checks{display:flex;flex-direction:column;align-items:stretch;gap:5px;margin-top:13px}.chk{font-size:13px;letter-spacing:0;border:0;padding:8px 0;white-space:normal;border-radius:0;align-items:flex-start}.chk input{appearance:auto;accent-color:var(--grad-b);height:16px;width:16px;margin-top:2px}.chk:has(input:checked){background:none;border:0;color:var(--ink)}.inspector .btn{width:100%;margin-top:10px}.inspector .seed-controls{display:flex;gap:6px;margin-top:14px}.inspector .seed-controls input{min-width:0;width:100%;font-size:12px}.inspector .seed-controls .btn{width:auto;margin:0}.inspector .seg{display:flex;margin:10px 0}.inspector .seg button{flex:1;padding:8px;font-size:12px}.review-links{display:flex;flex-direction:column}.review-links button{background:none;border:0;border-bottom:1px solid var(--hair);color:var(--ink);font-size:15px;padding:15px 0;text-align:left;cursor:pointer;display:flex;justify-content:space-between}.review-links button span{color:var(--ink-dim)}.export-area{margin-top:auto}.export-area p{color:var(--ink-soft);font-size:13px}.export-area label{font-size:13px;color:var(--ink-soft)}.export-area .review-check{display:flex;gap:9px;align-items:flex-start;margin:13px 0}.export-area input[type=checkbox]{accent-color:var(--grad-b);width:17px;height:17px;flex:none;margin-top:2px}.status-line{font-size:13px;color:var(--ink-soft);overflow-wrap:anywhere;min-height:24px}.lesson{margin:18px 0 0;padding:17px 20px;background:var(--panel);border:1px solid var(--hair);border-radius:10px;display:flex;align-items:center;gap:20px}.lesson-content{flex:1}.lesson strong{display:block;margin-bottom:4px;font-size:16px}.lesson p{font-size:14px;color:var(--ink-soft);max-width:80ch}.lesson .btn{flex:none}.lesson-count{font-size:12px;color:var(--grad-b);white-space:nowrap}.metrics{gap:15px;padding:18px}.verdict{border:1px solid var(--hair);background:transparent;padding:14px}.verdict p{font-size:14px}.verdict h4{font-size:17px}.mgrid{grid-template-columns:repeat(2,minmax(0,1fr))}.mcell .k{font-family:'Outfit',sans-serif;font-size:13px}.mcell .s{font-size:12px}.mcell .v{color:var(--ink);background:none;-webkit-text-fill-color:var(--ink);font-size:28px}table{font-size:13px}thead th{font-family:'Outfit',sans-serif;font-size:12px}td.tag,td.vl{font-size:11px}.pill{font-size:10px}.notice{align-items:center;justify-content:space-between;gap:20px;background:transparent;font-size:13px;padding:14px 28px;margin-top:auto}.notice .btn{padding:2px 0;min-height:26px}.logbar{background:#081222}.logbar .lh{padding:7px 28px}.empty{background:var(--panel);padding:24px}.empty .big{font-size:16px;color:var(--ink-soft)}.bar i{background:var(--grad-b)}.sheet{max-width:780px;border-radius:14px}.sheet .sb{font-size:15px;line-height:1.65}.sheet .sb h5{font-size:19px}.sheet .sb details{border-top:1px solid var(--hair);padding-top:12px}.sheet .sb summary{color:var(--ink);cursor:pointer}.sheet header{align-items:center}.sheet .sf .btn{min-width:90px}
+@media(max-width:1200px){.tagline{display:none}.workspace{grid-template-columns:minmax(0,1fr) 245px;gap:18px}.inspector{padding-left:18px}.studio-main{padding:22px 20px}.stage{height:600px}.global-tabs{gap:3px}.global-tabs button{padding:9px 12px}}
+@media(max-width:950px){#app>header{gap:12px;padding:16px 20px}.badge{font-size:12px}.wordmark{font-size:24px}.workspace{grid-template-columns:1fr}.inspector{border-left:0;border-top:1px solid var(--hair);padding:20px 0 0;display:grid;grid-template-columns:1fr 1fr;gap:20px}.inspector h2{grid-column:1/-1}.export-area{margin-top:0}.stage{height:620px}.welcome{padding-top:34px}.welcome-actions{gap:26px}.lesson{align-items:flex-start}.learning-path{gap:16px}}
+@media(max-width:620px){#app>header{padding:14px 16px}.brand-symbol{width:27px;height:27px}.wordmark{font-size:22px}.badge{width:100%;order:5}.flow{padding:10px;gap:8px}.flow span{padding:5px 10px;font-size:13px}.flow i{width:16px}.welcome{padding:30px 20px}.welcome h1{font-size:34px}.welcome-intro p{font-size:17px}.learning-path{flex-direction:column;gap:12px;margin:22px 0}.welcome-actions{grid-template-columns:1fr;gap:18px}.demo-start{padding:22px}.import-start{padding:6px 0}.studio-main{padding:24px 14px}.studio-heading{align-items:flex-start;gap:10px}.studio-heading h1{font-size:27px}.studio-heading p{font-size:14px}.stage{grid-template-columns:1fr;grid-template-rows:480px 480px;height:auto;gap:14px}.global-tabs{gap:2px}.global-tabs button{font-size:13px;padding:8px 10px}.inspector{grid-template-columns:1fr}.inspector h2{grid-column:auto}.lesson{flex-wrap:wrap;gap:10px;padding:16px}.lesson-content{flex-basis:calc(100% - 50px)}.lesson .btn{margin-left:auto}.notice{padding:14px 18px;flex-wrap:wrap;gap:8px}.logbar .lh{padding:7px 18px}.pane-head #srcInfo{max-width:60%}.toolbar label input[type=range]{width:70px}.modal{padding:12px}.sheet{max-height:92vh}.sheet .sb{padding:18px;font-size:14px}}
+
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header>
+    <svg class="brand-symbol" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M20 2 33 7 38 20 33 33 20 38 7 33 2 20 7 7Z"/><path d="m20 2 10 15-4 17M38 20 20 25 7 7M7 33l7-17L33 7M2 20l18 18"/></svg>
+    <div class="wordmark"><span class="de">DeFace </span><span class="rt">RT</span><span class="brand-type">DICOM</span></div>
+    <div class="tagline">radioterapia.ai</div>
+    <div class="spacer"></div>
+    <div class="badge" id="badgeRede" role="status"><b>&#9679;</b>&nbsp; Verificando isolamento…</div>
+    <button class="btn text" id="btnSobre">Ajuda</button>
+  </header>
+  <nav class="flow" aria-label="Etapas do estudo">
+    <span id="etapaImportar" aria-current="step">Importar</span><i aria-hidden="true"></i>
+    <span id="etapaRevisar">Revisar</span><i aria-hidden="true"></i><span id="etapaExportar">Exportar</span>
+  </nav>
+  <section class="welcome" id="boasVindas" aria-labelledby="tituloInicio">
+    <div class="welcome-intro"><h1 id="tituloInicio">Entenda o que uma face pode revelar.</h1><p>Explore um exame sintético, compare métodos e descubra por que desfigurar uma imagem não é anonimizar.</p></div>
+    <div class="learning-path" aria-label="O que você vai aprender"><div><b>1</b><span>Veja a mudança na imagem</span></div><div><b>2</b><span>Investigue os cabeçalhos</span></div><div><b>3</b><span>Meça o que ainda permanece</span></div></div>
+    <div class="welcome-actions">
+      <div class="demo-start"><h2>Aprenda com um caso sintético</h2><p>Um fantoma de crânio criado por matemática. Sem dados de paciente e pronto para explorar.</p>
+        <span class="field-title">Escolha a modalidade do exemplo</span><div class="seg" id="segExemplo" aria-label="Modalidade do caso sintético"><button data-mod="CT" aria-pressed="true">TC</button><button data-mod="MR" aria-pressed="false">RM</button></div>
+        <button class="btn primary" id="btnExemplo">Explorar caso sintético</button><p class="example-detail">Geração local · funciona offline · anatomia simplificada para ensino</p>
+      </div>
+      <div class="import-start"><h2>Ou abra sua própria série</h2><p>Declare a modalidade antes de abrir os arquivos. Eles permanecem neste dispositivo.</p>
+        <span class="field-title">Modalidade da sua série</span><div class="seg" id="segMod" aria-label="Modalidade da série"><button data-mod="CT" aria-pressed="true">TC</button><button data-mod="MR" aria-pressed="false">RM</button></div>
+        <div class="drop" id="drop" role="button" tabindex="0" aria-label="Abrir arquivos DICOM ou ZIP"><span id="dropTxt">Arraste uma pasta ou um ZIP aqui</span></div>
+        <div class="file-actions"><button class="btn" id="btnPasta">Selecionar pasta</button><button class="btn" id="btnArqs">Arquivos ou ZIP</button></div>
+      </div>
+    </div>
+    <p class="welcome-status" id="statusInicio" role="status" aria-live="polite"></p>
+  </section>
+  <input type="file" id="fPasta" webkitdirectory directory multiple hidden>
+  <input type="file" id="fArqs" multiple hidden accept=".dcm,.DCM,.zip,.ZIP,.ima,.IMA,application/dicom,application/zip">
+  <main class="studio-main" id="estudio" hidden>
+    <div class="studio-heading"><div><h1 id="tituloEstudio">Revise o resultado.</h1><p>Compare a imagem e confira os dados antes de exportar.</p><div class="study-label" id="tipoEstudo"></div></div><button class="btn text" id="btnNovo">Novo exame</button></div>
+    <div class="workspace"><div class="workspace-visual">
+      <div class="global-tabs" id="abasEstudio" role="tablist" aria-label="Explorar o exame"><button data-view="d3" role="tab" aria-selected="true">3D</button><button data-view="mpr" role="tab" aria-selected="false">Cortes</button><button data-view="hdr" role="tab" aria-selected="false">Cabeçalhos</button><button data-view="met" role="tab" aria-selected="false">Geometria</button></div>
+  <!-- PALCO -->
+  <div class="stage">
+
+    <!-- ORIGEM -->
+    <section class="pane">
+      <div class="pane-head">
+        <div class="kick">Original</div>
+        <div class="tabs" id="tabsL">
+          <button data-v="mpr" aria-selected="true">MPR</button>
+          <button data-v="d3" aria-selected="false">3D</button>
+          <button data-v="hdr" aria-selected="false">Cabeçalhos</button>
+        </div>
+        <div class="spacer"></div>
+        <div class="kick" id="srcInfo">&mdash;</div>
+      </div>
+      <div class="pane-body">
+
+        <div class="view on" id="Lmpr">
+          <div class="mpr-grid">
+            <div class="mpr-cell"><canvas id="cAx"></canvas><span class="lbl">Axial</span>
+              <span class="idx" id="iAx"></span><input type="range" id="sAx" min="0" max="0" value="0"></div>
+            <div class="mpr-cell"><canvas id="cCo"></canvas><span class="lbl">Coronal</span>
+              <span class="idx" id="iCo"></span><input type="range" id="sCo" min="0" max="0" value="0"></div>
+            <div class="mpr-cell"><canvas id="cSa"></canvas><span class="lbl">Sagital</span>
+              <span class="idx" id="iSa"></span><input type="range" id="sSa" min="0" max="0" value="0"></div>
+            <div class="cell-note" id="geomNote"></div>
+          </div>
+          <div class="toolbar">
+            <label>Janela <input type="range" id="wW" min="1" max="4000" value="400"><span class="val mono" id="vW">400</span></label>
+            <label>Nível <input type="range" id="wL" min="-1200" max="3000" value="40"><span class="val mono" id="vL">40</span></label>
+            <button class="btn" id="btnPreset">TC partes moles</button>
+          </div>
+          <div class="empty" id="LmprEmpty">
+            <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="#24D3EE" stroke-width="1"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg>
+            <div class="big">Escolha a modalidade e carregue uma série DICOM para come&ccedil;ar.</div>
+          </div>
+        </div>
+
+        <div class="view" id="Ld3">
+          <div class="canvas-wrap"><canvas id="c3L"></canvas></div>
+          <div class="toolbar">
+            <label>Limiar de pele <input type="range" id="thr" min="-900" max="900" value="-400"><span class="val mono" id="vThr">-400</span></label>
+            <label>Giro <input type="range" id="yaw" min="-90" max="90" value="0"><span class="val mono" id="vYaw">0&#176;</span></label>
+            <label>Incl. <input type="range" id="pit" min="-45" max="45" value="0"><span class="val mono" id="vPit">0&#176;</span></label>
+            <div class="spacer" style="flex:1"></div>
+            <span class="kick" id="d3note">arraste para girar</span>
+          </div>
+        </div>
+
+        <div class="view" id="Lhdr">
+          <div class="pane-head" style="border-top:0;border-bottom:1px solid var(--hair)">
+            <div class="filters" id="hdrFilters"></div>
+            <div class="spacer"></div>
+            <div class="kick" id="hdrCount"></div>
+          </div>
+          <div class="scroll"><table id="tblHdr">
+            <thead><tr><th style="width:88px">Tag</th><th>Atributo</th><th>Valor</th>
+              <th style="width:74px">Risco</th><th style="width:96px">Ação</th></tr></thead>
+            <tbody></tbody></table></div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- RESULTADO -->
+    <section class="pane">
+      <div class="pane-head">
+        <div class="kick">Resultado</div>
+        <div class="tabs" id="tabsR">
+          <button data-v="mpr" aria-selected="true">MPR</button>
+          <button data-v="d3" aria-selected="false">3D</button>
+          <button data-v="met" aria-selected="false">Métricas</button>
+          <button data-v="hdr" aria-selected="false">Cabeçalhos</button>
+        </div>
+        <div class="spacer"></div>
+      </div>
+      <div class="pane-body">
+
+        <div class="view on" id="Rmpr">
+          <div class="mpr-grid">
+            <div class="mpr-cell"><canvas id="rAx"></canvas><span class="lbl">Axial</span><span class="idx" id="riAx"></span></div>
+            <div class="mpr-cell"><canvas id="rCo"></canvas><span class="lbl">Coronal</span><span class="idx" id="riCo"></span></div>
+            <div class="mpr-cell"><canvas id="rSa"></canvas><span class="lbl">Sagital</span><span class="idx" id="riSa"></span></div>
+            <div class="cell-note" id="metNote"></div>
+          </div>
+          <div class="toolbar">
+            <span class="kick">Cortes acompanham o painel de origem</span>
+            <div class="spacer" style="flex:1"></div>
+            <span class="kick" id="rmprTag"></span>
+          </div>
+        </div>
+
+        <div class="view" id="Rd3">
+          <div class="canvas-wrap"><canvas id="c3R"></canvas></div>
+          <div class="toolbar">
+            <span class="kick">Mesmo ângulo e limiar do painel de origem</span>
+            <div class="spacer" style="flex:1"></div>
+            <span class="kick" id="rd3tag"></span>
+          </div>
+        </div>
+
+        <div class="view" id="Rmet"><div class="metrics scroll" id="metrics"></div></div>
+
+        <div class="view" id="Rhdr">
+          <div class="scroll"><table id="tblHdrR">
+            <thead><tr><th style="width:88px">Tag</th><th>Atributo</th><th>Valor entregue</th>
+              <th style="width:96px">Ação aplicada</th></tr></thead>
+            <tbody></tbody></table></div>
+        </div>
+
+          <div class="empty" id="RmprEmpty">
+            <div class="bar"><i id="prog"></i></div>
+            <div class="big" id="RmprTxt">O resultado aparece aqui depois de processar.</div>
+          </div>
+
+      </div>
+    </section>
+  </div>
+
+    </div>
+    <aside class="inspector" aria-label="Métodos e revisão"><h2>Revisão</h2>
+      <div><label for="selMet">Resultado em comparação</label><select id="selMet" disabled><option>Aguardando processamento</option></select>
+        <details id="detMetodos"><summary>Comparar métodos</summary><div class="checks" id="checks"></div><button class="btn primary" id="btnRun" disabled>Aplicar métodos</button></details>
+        <details><summary>Ajustes avançados</summary><label class="field-title" for="seed" style="margin-top:12px">Semente para reproduzir o resultado</label><div class="seed-controls"><input type="text" id="seed" spellcheck="false" placeholder="aleatória"><button class="btn" id="btnSeed" title="Sortear outra semente">Sortear</button></div></details>
+      </div>
+      <div class="review-links"><button id="btnCabecalhos">Cabeçalhos DICOM <span aria-hidden="true">→</span></button><button id="btnGeometria">Geometria facial <span aria-hidden="true">→</span></button><button id="btnLicao">Roteiro de exploração <span aria-hidden="true">→</span></button><button id="btnBaixarExemplo" hidden>Baixar caso original <span aria-hidden="true">↓</span></button></div>
+      <div class="export-area"><p>Verifique o que mudou e o que permaneceu.</p><label class="review-check"><input type="checkbox" id="revisaoConfirmada"><span>Revisei a imagem, os cabeçalhos e os limites da saída.</span></label><button class="btn primary" id="btnDl" disabled>Exportar resultado</button><div class="seg" id="segFmt" aria-label="Formato de exportação"><button data-fmt="dicom" aria-pressed="true">DICOM ZIP</button><button data-fmt="nifti" aria-pressed="false">NIfTI ZIP</button></div><div class="status-line" id="statusEstudio" role="status" aria-live="polite"></div></div>
+    </aside></div>
+    <section class="lesson" aria-label="Aprendizado guiado"><span class="lesson-count" id="licaoNumero">1 / 3</span><div class="lesson-content"><strong id="licaoTitulo">Olhar é o primeiro passo.</strong><p id="licaoTexto">Gire a reconstrução e compare os métodos. Uma face menos reconhecível não prova que o exame se tornou anônimo.</p></div><button class="btn" id="btnProximaLicao">Investigar cabeçalhos →</button></section>
+  </main>
+  <footer class="notice" id="notice"><span>Uso educacional · Pseudonimização não é anonimização · Não validado para uso clínico</span><button class="btn text" id="btnLimites">Privacidade e limites</button></footer>
+
+  <div class="logbar">
+    <div class="lh" id="logHead">
+      <div class="kick">Registro de execução</div>
+      <div class="spacer"></div>
+      <div class="kick" id="logLast">pronto</div>
+      <div class="kick" id="logCaret">&#9662;</div>
+    </div>
+    <div id="logBody"></div>
+  </div>
+</div>
+
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-label="Ajuda e limites do DeFace RT"><div class="sheet">
+  <header><div class="wordmark" style="font-size:20px"><span class="de">DeFace </span><span class="rt">RT Dicom</span></div></header>
+  <div class="sb" id="sheetBody"></div>
+  <div class="sf"><button class="btn" id="btnFechar">Fechar</button></div>
+</div></div>
+
+<script>
+__JS__
+</script>
+</body>
+</html>

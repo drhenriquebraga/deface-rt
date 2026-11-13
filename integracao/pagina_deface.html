@@ -1,0 +1,24 @@
+<!-- DeFace RT 1.4.0: substituir somente o conteudo da minipagina correspondente. -->
+<section class="deface-estudio" aria-labelledby="deface-estudio-titulo">
+  <h1 id="deface-estudio-titulo">Aprenda o que seus dados podem revelar.</h1>
+  <p>Explore casos sintéticos e entenda os limites da pseudonimização.</p>
+  <div class="deface-estudio-opcoes">
+    <a href="https://drhenriquebraga.github.io/deface-rt/" target="_blank" rel="noopener noreferrer"><strong>Imagem DICOM</strong><span>Compare métodos, imagens e cabeçalhos com um fantoma de TC ou RM.</span><b>Explorar imagens ↗</b></a>
+    <a href="https://drhenriquebraga.github.io/deface-rt/data/" target="_blank" rel="noopener noreferrer"><strong>Texto</strong><span>Troque identificadores, revise o resultado e teste a restauração.</span><b>Explorar texto ↗</b></a>
+  </div>
+  <p class="deface-estudio-nota">Processamento local no navegador · Exemplos sem dados de pacientes</p>
+  <details><summary>Privacidade, limites e código-fonte</summary>
+    <p>Uso educacional. Não validado para uso clínico. Pseudonimização não é anonimização; revise imagens, cabeçalhos e textos antes de divulgar.</p>
+    <p>Os programas não utilizam IA e funcionam offline depois de baixados. <a href="https://github.com/drhenriquebraga/deface-rt" target="_blank" rel="noopener noreferrer">Código-fonte, exemplos e documentação</a>.</p>
+  </details>
+</section>
+<style>
+.deface-estudio{max-width:800px;margin:auto;padding:32px 20px;color:#e4ecf5;font-family:inherit;line-height:1.55}
+.deface-estudio h1{font-size:clamp(28px,4vw,40px);line-height:1.15;margin:0 0 16px;letter-spacing:-.025em}
+.deface-estudio p{color:#b0c0d6}.deface-estudio-opcoes{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin:32px 0}
+.deface-estudio-opcoes a{display:flex;flex-direction:column;gap:14px;padding:24px;border:1px solid #30425b;border-radius:12px;background:#111e32;color:inherit;text-decoration:none}
+.deface-estudio-opcoes strong{font-size:24px}.deface-estudio-opcoes span{color:#b0c0d6}.deface-estudio-opcoes b{color:#9bb6ff;margin-top:auto}
+.deface-estudio a:focus-visible,.deface-estudio summary:focus-visible{outline:2px solid #9bb6ff;outline-offset:4px}
+.deface-estudio details{border-top:1px solid #30425b;padding-top:18px}.deface-estudio summary{cursor:pointer}
+.deface-estudio details a{color:#9bb6ff}.deface-estudio-nota{font-size:14px}@media(max-width:580px){.deface-estudio-opcoes{grid-template-columns:1fr}}
+</style>

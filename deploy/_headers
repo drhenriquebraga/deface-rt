@@ -1,0 +1,17 @@
+# Cloudflare Pages — cabecalhos para a rota do DeFace RT
+# A CSP tambem viaja dentro do proprio HTML (meta). Aqui ela e reforcada como
+# cabecalho HTTP, que e mais forte e cobre frame-ancestors, que a meta ignora.
+
+/deface/*
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src data:; img-src 'self' data: blob:; connect-src 'none'; form-action 'none'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), interest-cohort=()
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Resource-Policy: same-origin
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+  Cache-Control: public, max-age=300, must-revalidate
+
+/deface/DeFace_RT.html
+  Content-Disposition: inline
+  Cache-Control: public, max-age=300, must-revalidate

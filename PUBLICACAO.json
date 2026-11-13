@@ -1,0 +1,23 @@
+{
+  "versao": "1.4.0",
+  "data": "2026-11-13",
+  "raiz_repositorios": "https://github.com/drhenriquebraga",
+  "repositorio": "https://github.com/drhenriquebraga/deface-rt",
+  "programa_dicom": "https://drhenriquebraga.github.io/deface-rt/",
+  "programa_data": "https://drhenriquebraga.github.io/deface-rt/data/",
+  "rotas_site": {
+    "dicom": "/deface/dicom/",
+    "data": "/deface/data/"
+  },
+  "artefatos": {
+    "DeFace_RT.html": {
+      "sha256": "0f0520c1b62e440cc952b93d548065a7f5ce6ddedf8603ef3944e991e4202992",
+      "bytes": 312138
+    },
+    "DeFace_RT_Data.html": {
+      "sha256": "8174a07033b0edf30373f3cb828b07be6d2f56b4fda0e9e2205124a860998850",
+      "bytes": 216778
+    }
+  },
+  "nota": "Os destinos devem ser conferidos por HTTP antes de anunciar a publicacao."
+}
