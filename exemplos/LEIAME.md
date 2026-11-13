@@ -1,7 +1,7 @@
 # Laboratório de pseudonimização
 
 Os exemplos desta pasta foram fabricados por algoritmos. Não são exames de
-pacientes. A imagem estilizada permite praticar as operações, mas não mede a
+pacientes. A cabeça modelada permite praticar as operações, mas não mede a
 eficácia dos métodos em anatomia humana, em scanner real ou em uso clínico.
 
 O aplicativo contém dois desses casos: TC e RM. Eles são gerados dentro do
@@ -12,7 +12,7 @@ O código do gerador está em `src/js/75_exemplos.js`.
 
 | Arquivo | Conteúdo | Objetivo |
 |---|---|---|
-| `sinteticos/FANTOMA_TC_SINTETICO.zip` | TC geométrica, 112 cortes de 128 × 128 | Comparar os cinco métodos, cortes, 3D, cabeçalhos, geometria e exportações |
+| `sinteticos/FANTOMA_TC_SINTETICO.zip` | Cabeça modelada, TC simulada, 256 cortes de 192 × 224 | Comparar os cinco métodos, cortes, 3D, cabeçalhos, geometria e exportações |
 | `sinteticos/FANTOMA_RM_SINTETICO.zip` | RM esquemática na mesma geometria | Observar o limiar calculado a partir das intensidades, que não são UH |
 | `sinteticos/FANTOMA_TC_TEXTO_NOS_PIXELS.zip` | A mesma TC com a palavra fictícia `DEMO` desenhada nos pixels | Mostrar que limpar cabeçalhos não remove texto da imagem |
 | `publicos/cbctsynth-rt/TC_PUBLICA_FANTOMA.zip` | Fantoma público sintético, 44 cortes de 140 × 140 | Exercitar abertura de ZIP compactado, reescala e limites de detecção em geometria sem nariz |
@@ -26,7 +26,7 @@ modalidade DICOM **CT**, portanto selecione **TC**, inclusive para o CBCT.
 1. Abra o exemplo de TC pelo botão do aplicativo. Identifique o rótulo de
    exemplo sintético e o indicador de isolamento de rede.
 2. Em **Cortes**, percorra os três planos e ajuste janela/nível. Em **3D**,
-   gire a superfície e localize a projeção geométrica do nariz.
+   gire a superfície e localize nariz, pálpebras, lábios, orelhas e mandíbula.
 3. Em **Cabeçalhos**, procure `FANTOMA^SINTETICO`, o identificador fictício,
    a instituição inventada, a data e as duas tags privadas. Esses campos
    foram incluídos deliberadamente para a aula, não são achados de pacientes.
@@ -54,10 +54,18 @@ modalidade DICOM **CT**, portanto selecione **TC**, inclusive para o CBCT.
 
 ## Origem e redistribuição
 
-Os três ZIPs em `sinteticos/` são gerados pelo código deste projeto. Toda a
-geometria, ruído, datas, nomes e identificadores são fabricados. Não se usa
-atlas, foto, face ou exame de terceiro. A resolução é 128 × 128 × 112,
-com espaçamento 1,8 × 1,8 × 2 mm.
+Os três ZIPs em `sinteticos/` são gerados pelo código deste projeto. A superfície
+vem da malha humana modelada do MakeHuman, sob CC0, recortada para cabeça e
+pescoço. Ela não foi obtida de uma fotografia ou exame de pessoa. A origem,
+revisão, licença, transformações e hashes estão em `anatomia/PROVENIENCIA.json`.
+Os tecidos internos, intensidades de TC/RM, ruído, datas, nomes e identificadores
+são simulações didáticas autorais. O realismo da superfície não torna os cortes
+diagnosticamente corretos. A resolução é 192 × 224 × 256, com voxels de 1 mm.
+
+O modelo compacto está embutido no HTML e é descompactado localmente. O gerador
+cria arquivos DICOM reais, lidos pelo mesmo importador usado em séries externas.
+O visor renderiza esses pixels, inclusive depois dos métodos; não usa uma foto
+sobreposta para ilustrar um resultado que não existe no volume.
 
 Os dois ZIPs em `publicos/cbctsynth-rt/` foram **baixados** do projeto
 [CBCTsynth-RT de Saifeldein](https://github.com/saifeldein0/cbctsynth-rt),
@@ -85,10 +93,14 @@ python build/baixar_exemplos_publicos.py
 node testes/teste_publicos.js
 ```
 
-Somente o comando `baixar_exemplos_publicos.py` precisa de rede, durante a
-preparação do pacote. Ele baixa uma revisão fixa e extrai apenas os dados e
-os documentos autorizados; não executa o código externo. O programa final
-continua offline e não baixa exemplos durante o uso.
+Para reconstruir o modelo embutido a partir da malha original fixada, execute
+`python build/preparar_anatomia.py --baixar`. Esta preparação requer NumPy/SciPy e rede;
+não é necessária para abrir o aplicativo nem para gerar os DICOM offline.
+
+Os comandos `baixar_exemplos_publicos.py` e `preparar_anatomia.py --baixar`
+acessam a rede durante a preparação do pacote. Usam revisões fixas e obtêm
+somente os dados e documentos de origem; não executam código externo.
+O programa final continua offline e não baixa exemplos durante o uso.
 
 Os testes autorais cobrem TC/RM × cinco métodos, mudança mensurável de
 superfície, determinismo do caso, identificação fictícia, tags privadas,

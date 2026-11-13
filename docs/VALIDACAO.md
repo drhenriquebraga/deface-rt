@@ -1,4 +1,4 @@
-# Validacao da versao 1.4.0
+# Validacao da versao 1.4.1
 
 Esta versao usa somente casos sinteticos nos testes. As evidencias verificam
 comportamentos de software; nao validam eficacia de desidentificacao nem uso
@@ -12,6 +12,8 @@ clinico. Nao constituem garantia de ausencia absoluta de segredos.
   nomes e formatos de texto.
 - Exemplos novos: TC/RM em DICOM, cinco metodos, metadados ficticios, tags
   privadas, determinismo, NIfTI e anotacao ficticia que permanece nos pixels.
+- Cabeca modelada: 192 x 224 x 256 voxels de 1 mm, malha MakeHuman CC0,
+  proveniencia e hash fixados, tecidos simulados e renderizacao subvoxel.
 - Casos publicos: origem fixada, hashes de 88 arquivos, campos de texto
   esperados, ausencia de tags privadas e sequencias, volume e pixels.
 - Limites: recusa de pixels unsigned fora de int16, multiquadro e JPEG DRI.

@@ -12,7 +12,7 @@
    ========================================================================= */
 'use strict';
 
-const APP = { nome: 'DeFace RT Data', versao: '1.4.0', org: 'Radioterapia.AI' };
+const APP = { nome: 'DeFace RT Data', versao: '1.4.1', org: 'Radioterapia.AI' };
 
 /* ---- hash de string (xmur3), suficiente para derivar rótulo curto -------- */
 function xmur3(str) {

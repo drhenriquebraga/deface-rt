@@ -1,4 +1,4 @@
-# Integração DeFace RT 1.4.0
+# Integração DeFace RT 1.4.1
 
 ## Destinos desta entrega
 

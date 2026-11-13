@@ -305,6 +305,8 @@ button:focus-visible,a:focus-visible,summary:focus-visible,input:focus-visible,s
 @media(max-width:950px){#app>header{gap:12px;padding:16px 20px}.badge{font-size:12px}.wordmark{font-size:24px}.workspace{grid-template-columns:1fr}.inspector{border-left:0;border-top:1px solid var(--hair);padding:20px 0 0;display:grid;grid-template-columns:1fr 1fr;gap:20px}.inspector h2{grid-column:1/-1}.export-area{margin-top:0}.stage{height:620px}.welcome{padding-top:34px}.welcome-actions{gap:26px}.lesson{align-items:flex-start}.learning-path{gap:16px}}
 @media(max-width:620px){#app>header{padding:14px 16px}.brand-symbol{width:27px;height:27px}.wordmark{font-size:22px}.badge{width:100%;order:5}.flow{padding:10px;gap:8px}.flow span{padding:5px 10px;font-size:13px}.flow i{width:16px}.welcome{padding:30px 20px}.welcome h1{font-size:34px}.welcome-intro p{font-size:17px}.learning-path{flex-direction:column;gap:12px;margin:22px 0}.welcome-actions{grid-template-columns:1fr;gap:18px}.demo-start{padding:22px}.import-start{padding:6px 0}.studio-main{padding:24px 14px}.studio-heading{align-items:flex-start;gap:10px}.studio-heading h1{font-size:27px}.studio-heading p{font-size:14px}.stage{grid-template-columns:1fr;grid-template-rows:480px 480px;height:auto;gap:14px}.global-tabs{gap:2px}.global-tabs button{font-size:13px;padding:8px 10px}.inspector{grid-template-columns:1fr}.inspector h2{grid-column:auto}.lesson{flex-wrap:wrap;gap:10px;padding:16px}.lesson-content{flex-basis:calc(100% - 50px)}.lesson .btn{margin-left:auto}.notice{padding:14px 18px;flex-wrap:wrap;gap:8px}.logbar .lh{padding:7px 18px}.pane-head #srcInfo{max-width:60%}.toolbar label input[type=range]{width:70px}.modal{padding:12px}.sheet{max-height:92vh}.sheet .sb{padding:18px;font-size:14px}}
 
+/* A comparação precisa usar a mesma escala visual nos dois painéis. */
+#Ld3 .toolbar,#Rd3 .toolbar{height:96px;flex:0 0 96px}
 </style>
 </head>
 <body>
@@ -328,7 +330,7 @@ button:focus-visible,a:focus-visible,summary:focus-visible,input:focus-visible,s
     <div class="welcome-actions">
       <div class="demo-start"><h2>Aprenda com um caso sintético</h2><p>Um fantoma de crânio criado por matemática. Sem dados de paciente e pronto para explorar.</p>
         <span class="field-title">Escolha a modalidade do exemplo</span><div class="seg" id="segExemplo" aria-label="Modalidade do caso sintético"><button data-mod="CT" aria-pressed="true">TC</button><button data-mod="MR" aria-pressed="false">RM</button></div>
-        <button class="btn primary" id="btnExemplo">Explorar caso sintético</button><p class="example-detail">Geração local · funciona offline · anatomia simplificada para ensino</p>
+        <button class="btn primary" id="btnExemplo">Explorar caso sintético</button><p class="example-detail">Cabeça modelada em 3D · TC e RM simuladas · funciona offline</p>
       </div>
       <div class="import-start"><h2>Ou abra sua própria série</h2><p>Declare a modalidade antes de abrir os arquivos. Eles permanecem neste dispositivo.</p>
         <span class="field-title">Modalidade da sua série</span><div class="seg" id="segMod" aria-label="Modalidade da série"><button data-mod="CT" aria-pressed="true">TC</button><button data-mod="MR" aria-pressed="false">RM</button></div>

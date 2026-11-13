@@ -185,7 +185,31 @@ async function reconstruir3D(vol, pix, opc) {
 
   const prof = new Float32Array(W * H).fill(-1);
   const conf = new Uint8Array(W * H);
-  const espVox = Math.max(1, Math.round(4 / Math.min(mmA, mmS, mmL)));
+  const normais = new Float32Array(W * H * 3);
+  // Confirma apenas a vizinhança (~1,5–2 mm na grade usual): uma barreira
+  // de 4 mm apagava pálpebras e bordas de orelhas que existem no volume.
+  const espVox = Math.max(1, Math.round(2 / Math.min(mmA, mmS, mmL)));
+
+  /* Interpolação só na vizinhança da superfície. O percurso pelo ar continua
+     barato; refinar o limiar elimina os degraus de voxel do primeiro impacto.
+     Os centros dos voxels ficam a meio espaçamento da borda do volume. */
+  const strideL = m.L.passo, strideA = m.A.passo, strideS = m.S.passo;
+  function amostrar(X, Y, Z) {
+    const l = Math.max(0, Math.min(nL - 1, X / mmL - 0.5));
+    const a = Math.max(0, Math.min(nA - 1, Y / mmA - 0.5));
+    const s = Math.max(0, Math.min(nS - 1, Z / mmS - 0.5));
+    const il = Math.floor(l), ia = Math.floor(a), is = Math.floor(s);
+    const fl = l - il, fa = a - ia, fs = s - is;
+    const dl = il + 1 < nL ? strideL : 0;
+    const da = ia + 1 < nA ? strideA : 0;
+    const ds = is + 1 < nS ? strideS : 0;
+    const id = m.base + il * strideL + ia * strideA + is * strideS;
+    const v00 = pix[id] * (1 - fl) + pix[id + dl] * fl;
+    const v10 = pix[id + da] * (1 - fl) + pix[id + da + dl] * fl;
+    const v01 = pix[id + ds] * (1 - fl) + pix[id + ds + dl] * fl;
+    const v11 = pix[id + ds + da] * (1 - fl) + pix[id + ds + da + dl] * fl;
+    return (v00 * (1 - fa) + v10 * fa) * (1 - fs) + (v01 * (1 - fa) + v11 * fa) * fs;
+  }
 
   let t0 = performance.now();
   for (let py = 0; py < H; py++) {
@@ -206,21 +230,72 @@ async function reconstruir3D(vol, pix, opc) {
         if (X < 0 || Y < 0 || Z < 0 || X >= LX || Y >= LY || Z >= LZ) continue;
         const l = (X / mmL) | 0, a = (Y / mmA) | 0, sz = (Z / mmS) | 0;
         if (pix[vol.idx(a, sz, l)] <= limiar) continue;
-        /* confirma espessura: rejeita ruído isolado e superfície de 1 voxel */
+        /* Confirma ao menos um vizinho, preservando superfícies finas. */
         let bons = 0;
         for (let q = 1; q <= espVox; q++) {
           const X2 = X + dX * q, Y2 = Y + dY * q, Z2 = Z + dZ * q;
           if (X2 < 0 || Y2 < 0 || Z2 < 0 || X2 >= LX || Y2 >= LY || Z2 >= LZ) break;
           if (pix[vol.idx((Y2 / mmA) | 0, (Z2 / mmS) | 0, (X2 / mmL) | 0)] > limiar) bons++;
         }
-        if (bons >= Math.max(1, espVox - 1)) { t = s * passo; break; }
+        if (bons < Math.max(1, espVox - 1)) continue;
+        if (amostrar(X, Y, Z) <= limiar) continue;
+
+        /* O vizinho mais próximo pode ultrapassar a isosuperfície por até
+           meio voxel. Localiza o intervalo local antes da bissecção. */
+        let atras = passo;
+        const maxAtras = Math.max(passo * 4, Math.max(mmA, mmS, mmL) * 1.5);
+        while (atras < maxAtras && amostrar(X - dir[0] * atras, Y - dir[1] * atras, Z - dir[2] * atras) > limiar)
+          atras += passo;
+        const temIntervalo = amostrar(X - dir[0] * atras, Y - dir[1] * atras, Z - dir[2] * atras) <= limiar;
+        let lo = temIntervalo ? -atras : 0, hi = 0;
+        for (let q = 0; q < 7; q++) {
+          const meio = (lo + hi) * 0.5;
+          if (amostrar(X + dir[0] * meio, Y + dir[1] * meio, Z + dir[2] * meio) > limiar) hi = meio;
+          else lo = meio;
+        }
+        const ajuste = (lo + hi) * 0.5;
+        t = (s + 1) * passo + ajuste;
+        break;
       }
       prof[py * W + px] = t;
       conf[py * W + px] = t >= 0 ? 1 : 0;
     }
   }
+  /* Ajuste local de um plano na superfície já refinada. Trabalha em mm,
+     preserva planos oblíquos e reduz oscilações subvoxel da luz sem alterar
+     o mapa de profundidade nem os pixels DICOM. A janela é pequena e não
+     cruza saltos de profundidade ou a silhueta. Normais por intensidade,
+     ao contrário, podem enviesar um plano em voxels anisotrópicos. */
+  const pesos = [1, 4, 6, 4, 1];
+  const salto = Math.max(Math.min(mmA, mmS, mmL) * 3, escala * 8);
+  for (let y = 0; y < H; y++) {
+    if (performance.now() - t0 > 45) { await cede(); t0 = performance.now(); }
+    for (let x = 0; x < W; x++) {
+      const i = y * W + x, z = prof[i];
+      if (z < 0) continue;
+      let sw = 0, sx = 0, sy = 0, sz = 0, sxx = 0, syy = 0, sxy = 0, sxz = 0, syz = 0;
+      for (let dy = -2; dy <= 2; dy++) {
+        const yy = y + dy; if (yy < 0 || yy >= H) continue;
+        for (let dx = -2; dx <= 2; dx++) {
+          const xx = x + dx; if (xx < 0 || xx >= W) continue;
+          const nz = prof[yy * W + xx]; if (nz < 0 || Math.abs(nz - z) > salto) continue;
+          const w = pesos[dx + 2] * pesos[dy + 2], dz = nz - z;
+          sw += w; sx += w * dx; sy += w * dy; sz += w * dz;
+          sxx += w * dx * dx; syy += w * dy * dy; sxy += w * dx * dy;
+          sxz += w * dx * dz; syz += w * dy * dz;
+        }
+      }
+      if (!sw) continue;
+      const xx = sxx - sx * sx / sw, yy = syy - sy * sy / sw, xy = sxy - sx * sy / sw;
+      const xz = sxz - sx * sz / sw, yz = syz - sy * sz / sw, det = xx * yy - xy * xy;
+      if (det <= 1e-6) continue;
+      const gx = (xz * yy - yz * xy) / det / escala, gy = (yz * xx - xz * xy) / det / escala;
+      const gn = Math.hypot(gx, gy, 1), ni = i * 3;
+      normais[ni] = gx / gn; normais[ni + 1] = -gy / gn; normais[ni + 2] = 1 / gn;
+    }
+  }
   if (opc.prog) opc.prog(1);
-  return { prof, conf, W, H, escala, diag };
+  return { prof, conf, normais, W, H, escala, diag };
 }
 
 /* sombreamento a partir do mapa de profundidade + anéis orbitais ao fundo */
@@ -292,7 +367,12 @@ function sombrear(rec, opc) {
       const zd = y < H - 1 && prof[i + W] >= 0 ? prof[i + W] : z;
       const gx = (zr - zl) / (2 * escala), gy = (zd - zu) / (2 * escala);
       const nl = Math.hypot(gx, gy, 1);
-      const nX = gx / nl, nY = -gy / nl, nZ = 1 / nl;
+      let nX = gx / nl, nY = -gy / nl, nZ = 1 / nl;
+      /* Reconstruções antigas continuam válidas. A normal suavizada evita
+         que diferenças de profundidade quantizadas virem faixas de luz. */
+      if (rec.normais && rec.normais[i * 3 + 2] > 0) {
+        nX = rec.normais[i * 3]; nY = rec.normais[i * 3 + 1]; nZ = rec.normais[i * 3 + 2];
+      }
 
       let lam = nX * LUZ[0] + nY * LUZ[1] + nZ * LUZ[2];
       lam = lam < 0 ? 0 : lam;

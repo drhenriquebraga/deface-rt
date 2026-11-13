@@ -58,13 +58,17 @@ async function testar() {
 
     await pagina.click('#btnExemplo');
     await aguardarPronto(pagina);
-    assert.deepEqual(await pagina.evaluate(() => [E.vol.nx, E.vol.ny, E.vol.nz]), [128, 128, 112]);
+    assert.deepEqual(await pagina.evaluate(() => [E.vol.nx, E.vol.ny, E.vol.nz]), [192, 224, 256]);
     assert.equal(await pagina.locator('#tipoEstudo').innerText(), 'Fantoma sintético — não é exame de paciente');
     const pixels3D = await pagina.evaluate(() => ['c3L', 'c3R'].map((id) => {
       const c = document.getElementById(id), p = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
       return { largura: c.width, claros: p.filter((v, i) => i % 4 === 0 && v > 70).length };
     }));
     assert.ok(pixels3D.every((p) => p.largura === 424 && p.claros > 1000), 'Ambos os visores devem conter o fantoma.');
+    const escalas = await pagina.evaluate(() => ['c3L', 'c3R'].map(id => {
+      const r = document.getElementById(id).getBoundingClientRect(); return [r.width, r.height];
+    }));
+    assert.deepEqual(escalas[0], escalas[1], 'Original e resultado precisam usar a mesma escala na comparação.');
     if (process.env.CAPTURAR_QA !== '0') await pagina.screenshot({ path: path.join(saida, 'dicom-revisao-desktop.png'), fullPage: true });
     await pagina.setViewportSize({ width: 390, height: 844 });
     assert.equal(await pagina.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
@@ -128,7 +132,7 @@ async function testar() {
     for (const arquivo of [derivado, original]) {
       await pagina.click('#btnNovo');
       await pagina.setInputFiles('#fArqs', arquivo);
-      await pagina.waitForFunction(() => !E.ocupado && E.vol && E.vol.nz === 112, null, { timeout: 60000 });
+      await pagina.waitForFunction(() => !E.ocupado && E.vol && E.vol.nz === 256, null, { timeout: 120000 });
       assert.equal(await pagina.locator('#btnRun').isDisabled(), false);
       if (arquivo === derivado) assert.equal(await pagina.evaluate(() => E.vol.refLeitor.txt('00100020')), idPrevisto,
         'O ID mostrado na revisão precisa ser o mesmo gravado no DICOM.');

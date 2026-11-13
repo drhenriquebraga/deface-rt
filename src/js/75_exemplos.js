@@ -1,16 +1,66 @@
 /* =========================================================================
-   Casos didáticos gerados no dispositivo. A anatomia é um fantoma geométrico
-   autoral: não é exame de paciente nem cópia de um rosto. Os identificadores
-   deliberadamente fictícios permitem observar a limpeza do cabeçalho.
+   Casos didáticos gerados no dispositivo. A superfície vem de uma cabeça
+   modelada do MakeHuman (CC0), com proveniência em exemplos/anatomia.
+   Tecidos, intensidades e identificadores são simulados; não há exame de
+   paciente, fotografia nem rosto reconstruído de uma pessoa.
    ========================================================================= */
 'use strict';
 
 const EXEMPLO_DIDATICO = {
-  nome: 'Fantoma sintético DeFace RT',
-  descricao: 'Geometria simplificada, sem dados de paciente. Não representa anatomia diagnóstica.',
-  dimensoes: [128, 128, 112], espaco: [1.8, 1.8, 2],
+  nome: 'Cabeça anatômica sintética DeFace RT',
+  descricao: 'Cabeça modelada em 3D; tecidos e intensidades simulados para ensino. Não é exame de paciente nem anatomia diagnóstica.',
+  dimensoes: ANATOMIA_SINTETICA.dimensoes, espaco: ANATOMIA_SINTETICA.espaco,
   semente: 'AULA-DEFACE-2026'
 };
+
+let distanciaAnatomica = null;
+async function carregarAnatomiaSintetica() {
+  if (!distanciaAnatomica) distanciaAnatomica = (async () => {
+    const codificado = atob(ANATOMIA_SINTETICA.distanciaBase64);
+    const bytes = Uint8Array.from(codificado, c => c.charCodeAt(0));
+    const fluxo = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+    const dados = new Int8Array(await new Response(fluxo).arrayBuffer());
+    if (dados.length !== EXEMPLO_DIDATICO.dimensoes.reduce((a, b) => a * b, 1))
+      throw new Error('O modelo anatômico embutido está incompleto.');
+    return dados;
+  })().catch(e => { distanciaAnatomica = null; throw e; });
+  return distanciaAnatomica;
+}
+
+/* Contraste didático, não simulação de aquisição clínica. A superfície facial
+   é a mesma nas duas modalidades. Os compartimentos internos foram criados
+   por equações e não são segmentações da malha nem de um atlas de pacientes. */
+function sinalTecidoSintetico(l, a, z, profundidade, rm) {
+  if (profundidade < 1.6) return rm ? 650 : 40;
+  let sinal = profundidade < 4 ? (rm ? 920 : -85) : (rm ? 660 : 48);
+  const q = (l / 61.4) ** 2 + ((a + 8.25) / 72.4) ** 2 + ((z - 49.9) / 69.7) ** 2;
+  // Calota, osso esponjoso e cavidade craniana esquemáticos.
+  if (z > 1 && q < 1.05 && q > 0.79 && profundidade > 4)
+    sinal = rm ? 40 : (q > 0.98 || q < 0.86 ? 1050 : 520);
+  if (q < 0.79 && z > 1) {
+    const sulco = Math.sin(l * 0.32 + Math.sin(a * 0.12) * 1.7)
+      * Math.sin(a * 0.27 + Math.sin(z * 0.13) * 1.2) * Math.cos(z * 0.24 + l * 0.05);
+    const cortex = q > 0.57 || Math.abs(l) < 1.1;
+    sinal = cortex ? (rm ? 680 : 39) : (rm ? 830 : 28);
+    if ((q > 0.61 && sulco > 0.37) || (Math.abs(l) < 1.1 && z > 36)) sinal = rm ? 230 : 9;
+    const vent = ((Math.abs(l) - 7.5) / 5) ** 2 + ((a + 8) / 21) ** 2 + ((z - 46) / 8) ** 2;
+    if (vent < 1) sinal = rm ? 210 : 8;
+  }
+  const olho = ((Math.abs(l) - 27.1) / 11.8) ** 2 + ((a - 52.9) / 11.8) ** 2 + ((z - 16.6) / 11.8) ** 2;
+  if (olho < 1 && profundidade > 2) sinal = rm ? 960 : 22;
+  // Seios da face e fossas nasais: apenas contraste para explorar os cortes.
+  const seio = ((Math.abs(l) - 23) / 10) ** 2 + ((a - 42) / 13) ** 2 + ((z + 17) / 13) ** 2;
+  const nasal = ((Math.abs(l) - 5) / 3) ** 2 + ((a - 62) / 15) ** 2 + ((z + 5) / 18) ** 2;
+  if (profundidade > 5 && (seio < 1 || nasal < 1)) sinal = rm ? 0 : -950;
+  // Arco mandibular e coluna cervical esquemáticos.
+  const mandibula = (l / 48) ** 2 + ((a - 3) / 52) ** 2;
+  const curva = -68 + 17 * (Math.abs(l) / 48) ** 2;
+  if (z > curva - 6 && z < curva + 5 && mandibula > 0.72 && mandibula < 1 && profundidade > 4)
+    sinal = rm ? 70 : 1000;
+  const coluna = (l / 13) ** 2 + ((a + 18) / 12) ** 2;
+  if (z < -42 && coluna < 1) sinal = coluna > 0.55 ? (rm ? 60 : 740) : (rm ? 420 : 25);
+  return sinal;
+}
 
 /* Produz arquivos completos para exercitar o MESMO leitor usado na abertura
    de uma série externa. Não injeta um volume pronto no estado da interface. */
@@ -20,10 +70,11 @@ async function gerarCasoSintetico(modalidade = 'CT', opcoes = {}) {
   const [nx, ny, nz] = EXEMPLO_DIDATICO.dimensoes;
   const [px, py, pz] = EXEMPLO_DIDATICO.espaco;
   const rm = modalidade === 'MR';
+  const distancias = await carregarAnatomiaSintetica();
   const aleatorio = prng(EXEMPLO_DIDATICO.semente + modalidade);
   const arquivos = [];
   /* UIDs de UUIDs constantes exclusivos deste fantoma, nunca de pessoa. */
-  const raizUID = '2.25.281245607148902346176528901345071' + (opcoes.textoNosPixels ? (rm ? '204' : '203') : (rm ? '202' : '201'));
+  const raizUID = '2.25.281245607148902346176528901345071' + (opcoes.textoNosPixels ? (rm ? '304' : '303') : (rm ? '302' : '301'));
   for (let k = 0; k < nz; k++) {
     const z = (k - (nz - 1) / 2) * pz;
     const pixels = new Int16Array(nx * ny);
@@ -31,23 +82,14 @@ async function gerarCasoSintetico(modalidade = 'CT', opcoes = {}) {
       const a = ((ny - 1) / 2 - j) * py; // anterior = -Y em LPS
       for (let i = 0; i < nx; i++) {
         const l = (i - (nx - 1) / 2) * px;
-        const q = (l / 74) ** 2 + (a / 90) ** 2 + (z / 104) ** 2;
-        const superficie = 90 * Math.sqrt(Math.max(0, 1 - (l / 74) ** 2 - (z / 104) ** 2));
-        const perfilNariz = z > 46 ? 0 : z > 6 ? (46 - z) / 40 : Math.exp(-(((z - 6) / 14) ** 2));
-        const nariz = 23 * Math.exp(-((l / 11) ** 2)) * perfilNariz;
-        const dentro = q <= 1 || (a > 0 && a <= superficie + nariz && perfilNariz > 0.001 && Math.abs(l) < 30);
+        const profundidade = distancias[i + j * nx + k * nx * ny] * ANATOMIA_SINTETICA.escalaDistancia;
         let valor = rm ? 0 : -1000;
-        if (dentro) {
-          const casca = q > 0.82 && q <= 0.95;
-          const variacao = Math.round((aleatorio() - 0.5) * (rm ? 30 : 10));
-          valor = rm ? (casca ? 80 : 690) + variacao : (casca ? 900 : 45) + variacao;
-          /* Ventriculos, órbitas e seios são elipsoides didáticos. */
-          const ventriculo = (l / 10) ** 2 + ((a + 6) / 22) ** 2 + ((z - 20) / 11) ** 2 < 1;
-          const olho = ((Math.abs(l) - 27) / 13) ** 2 + ((a - 64) / 15) ** 2 + ((z - 17) / 13) ** 2 < 1;
-          const seio = (l / 14) ** 2 + ((a - 69) / 12) ** 2 + ((z + 6) / 12) ** 2 < 1;
-          if (ventriculo) valor = rm ? 220 : 10;
-          if (olho) valor = rm ? 900 : 20;
-          if (seio) valor = rm ? 0 : -900;
+        if (profundidade > -0.8) {
+          const sinal = sinalTecidoSintetico(l, a, z, profundidade, rm);
+          const variacao = (aleatorio() - 0.5) * (rm ? 18 : 6);
+          // Volume parcial de pele para preservar a superfície subvoxel.
+          const cobertura = Math.max(0, Math.min(1, (rm ? 0.5 : 0.577) + profundidade / 1.1));
+          valor = Math.round(valor * (1 - cobertura) + (sinal + variacao) * cobertura);
         }
         pixels[i + j * nx] = valor;
       }
@@ -87,7 +129,7 @@ function escreverExemploSintetico(pixels, corte, modalidade, raizUID, opcoes = {
   d.texto('00080090', 'PN', 'DOCENTE^FICTICIO');
   d.texto('00081030', 'LO', 'CASO SINTETICO - NAO E PACIENTE');
   d.texto('0008103E', 'LO', 'FANTOMA DIDATICO ' + modalidade);
-  d.texto('00081090', 'LO', 'MODELO GEOMETRICO');
+  d.texto('00081090', 'LO', 'MODELO ANATOMICO SINTETICO');
   d.texto('00100010', 'PN', 'FANTOMA^SINTETICO');
   d.texto('00100020', 'LO', 'EXEMPLO-FICTICIO-' + modalidade);
   d.texto('00100030', 'DA', '19500101');
@@ -143,8 +185,9 @@ async function montarZIPExemplo(modalidade = 'CT', opcoes = {}) {
   for (const arq of arquivos) itens.push({ nome: arq.name, dados: new Uint8Array(await arq.arrayBuffer()) });
   itens.push({ nome: 'LEIAME_SINTETICO.txt', dados: new TextEncoder().encode([
     EXEMPLO_DIDATICO.nome, EXEMPLO_DIDATICO.descricao,
-    'Modalidade simulada: ' + modalidade + '. 128 x 128 x 112 voxels; 1,8 x 1,8 x 2 mm.',
-    'Todos os identificadores, datas, nomes e pixels foram fabricados para ensino.',
+    'Modalidade simulada: ' + modalidade + '. ' + EXEMPLO_DIDATICO.dimensoes.join(' x ') + ' voxels; 1 x 1 x 1 mm.',
+    'Superficie: cabeca modelada MakeHuman CC0; tecidos, intensidades, identificadores, datas e nomes simulados.',
+    'Origem e licenca: exemplos/anatomia/PROVENIENCIA.json e LICENSES/CC0-MakeHuman.txt.',
     'Abra o ZIP inteiro no DeFace RT e compare os cinco metodos, os cabecalhos e a geometria.',
     'Semente sugerida para resultados reproduziveis: ' + EXEMPLO_DIDATICO.semente,
     opcoes.textoNosPixels ? 'Este caso tem a palavra ficticia DEMO gravada nos pixels. A limpeza de cabecalho NAO a remove.' : 'Este caso nao contem anotacao gravada nos pixels.',

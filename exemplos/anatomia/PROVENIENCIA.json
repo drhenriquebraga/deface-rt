@@ -1,0 +1,64 @@
+{
+  "nome": "MakeHuman hm08, cabeça e pescoço sintéticos",
+  "licenca": "CC0-1.0",
+  "revisao": "a8bc2d54ff0ac92e78ff71431b1023eda42bf482",
+  "url": "https://raw.githubusercontent.com/makehumancommunity/makehuman/a8bc2d54ff0ac92e78ff71431b1023eda42bf482/makehuman/data/3dobjs/base.obj",
+  "sha256Origem": "8e761e6624b8f54536409135d1636da63b32486a90d4897f84e121d144f6fb4c",
+  "sha256Distancia": "8f56d091fd8255b6fa0d67baa3d9e2d92f09f259224c1582a56a368988e15131",
+  "dimensoes": [
+    192,
+    224,
+    256
+  ],
+  "espaco_mm": [
+    1,
+    1,
+    1
+  ],
+  "transformacao": {
+    "escala_mm_por_unidade": 88.0,
+    "offset_anterior_source_z": 0.64455,
+    "offset_superior_source_y": 7.09565,
+    "corte_source_y": 5.71
+  },
+  "processo": [
+    "Somente grupo body do OBJ, recortado na cabeça e pescoço",
+    "Duas subdivisões Catmull-Clark implementadas neste projeto",
+    "Preenchimento por paridade de raios e globos oculares sintéticos",
+    "Distância ao triângulo da pele e plano de fechamento do pescoço",
+    "Campo Int8, positivo dentro, passo0.25mm, clamp±8mm, gzip determinístico"
+  ],
+  "vertices_subdivididos": 72625,
+  "triangulos": 145024,
+  "voxels_internos": 2804986,
+  "bytes_sem_compressao": 11010048,
+  "bytes_gzip": 786032,
+  "referencias_mm_las": {
+    "nariz": [
+      0,
+      91.1812,
+      -16.4252
+    ],
+    "olhos": [
+      [
+        -27.082,
+        52.8704,
+        16.588
+      ],
+      [
+        27.082,
+        52.8704,
+        16.588
+      ]
+    ],
+    "raioOlho": 11.792,
+    "queixo": [
+      0,
+      51.5724,
+      -82.7332
+    ],
+    "topo": 122.8172,
+    "cortePescoco": -121.9372
+  },
+  "observacao": "Superfície de personagem 3D. Não contém anatomia interna nem dados clínicos; os tecidos são simulados separadamente."
+}

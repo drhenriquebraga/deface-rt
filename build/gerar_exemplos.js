@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 global.document = { createElement: () => ({ getContext: () => ({}) }) };
 const raiz = path.resolve(__dirname, '..');
-const modulos = ['10_core.js','20_dict.js','30_dicom.js','40_volume.js','50_deface.js','60_render.js','70_write.js','75_exemplos.js'];
+const modulos = ['10_core.js','20_dict.js','30_dicom.js','40_volume.js','50_deface.js','60_render.js','70_write.js','74_anatomia.js','75_exemplos.js'];
 const fonte = modulos.map(n => fs.readFileSync(path.join(raiz,'src/js',n),'utf8')).join('\n');
 eval(fonte+'\nglobal.montarZIPExemplo = montarZIPExemplo;');
 (async () => {

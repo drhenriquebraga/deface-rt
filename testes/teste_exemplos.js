@@ -6,19 +6,20 @@ const assert = require('node:assert/strict');
 global.ImageData = class { constructor(d, w, h) { this.data = d; this.width = w; this.height = h; } };
 global.document = { createElement: () => ({ getContext: () => ({}) }), addEventListener() {} };
 const raiz = path.resolve(__dirname, '..');
-const modulos = ['10_core.js','20_dict.js','30_dicom.js','40_volume.js','50_deface.js','60_render.js','70_write.js','75_exemplos.js'];
+const modulos = ['10_core.js','20_dict.js','30_dicom.js','40_volume.js','50_deface.js','60_render.js','70_write.js','74_anatomia.js','75_exemplos.js'];
 const fonte = modulos.map(n => fs.readFileSync(path.join(raiz, 'src/js', n), 'utf8')).join('\n');
 const nomes = ['gerarCasoSintetico','montarZIPExemplo','montarVolume','LeitorDICOM','auditar','limiarAutomatico','analisar',
-  'fundoDoVolume','faixaDaFace','aplicarMetodo','materializar','medir','METODOS','escreverCorte','escreverNIfTI','MapaUID'];
+  'fundoDoVolume','faixaDaFace','aplicarMetodo','materializar','medir','METODOS','escreverCorte','escreverNIfTI','MapaUID','EXEMPLO_DIDATICO'];
 eval(fonte + '\nObject.assign(global, {' + nomes.join(',') + '});');
 
 async function testar(modalidade) {
   const arquivos = await gerarCasoSintetico(modalidade);
-  assert.equal(arquivos.length, 112);
+  assert.equal(arquivos.length, 256);
   const brutos = await Promise.all(arquivos.map(async a => ({ nome: a.name, buf: await a.arrayBuffer() })));
   /* Embaralhar a ordem exige que a montagem use as posições DICOM. */
   const vol = await montarVolume(brutos.slice().reverse());
-  assert.deepEqual([vol.nx, vol.ny, vol.nz], [128,128,112]);
+  assert.deepEqual([vol.nx, vol.ny, vol.nz], [192,224,256]);
+  assert.deepEqual([vol.px, vol.py, vol.pz], [1,1,1]);
   assert.equal(vol.modalidade, modalidade);
   assert.equal(vol.irregular, false);
   assert.equal(vol.diag.falhas.length, 0);
@@ -57,8 +58,9 @@ async function testar(modalidade) {
     const descomprimido = new Uint8Array(await new Response(new Blob([nifti]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer());
     const cab = new DataView(descomprimido.buffer);
     assert.equal(cab.getInt32(0,true),348);
-    assert.equal(cab.getInt16(42,true),128);
-    assert.equal(cab.getInt16(46,true),112);
+    assert.equal(cab.getInt16(42,true),192);
+    assert.equal(cab.getInt16(44,true),224);
+    assert.equal(cab.getInt16(46,true),256);
     assert.equal(descomprimido.length,352+pix.byteLength);
     medidas.push({modalidade,metodo:met.id,limiar,rms:+m.rms.toFixed(2),alterados:+m.voxelsPct.toFixed(2)});
   }
@@ -67,9 +69,9 @@ async function testar(modalidade) {
   const zip = await montarZIPExemplo(modalidade);
   const zipBytes = new Uint8Array(await zip.arrayBuffer());
   assert.equal(new DataView(zipBytes.buffer).getUint32(0,true),0x04034b50);
-  assert.equal(new DataView(zipBytes.buffer).getUint16(zipBytes.length-12,true),113);
+  assert.equal(new DataView(zipBytes.buffer).getUint16(zipBytes.length-12,true),257);
   console.table(medidas);
-  return { modalidade, cortes:112, bytesZIP:zipBytes.length, medidas };
+  return { modalidade, cortes:256, bytesZIP:zipBytes.length, medidas };
 }
 
 (async () => {
@@ -81,13 +83,13 @@ async function testar(modalidade) {
   assert.equal(comTexto.txt('00280301'),'YES');
   assert.ok(auditar(comTexto).achados.some(a=>a.n==='Anotação queimada na imagem'));
   const pxAnotado=await comTexto.lerPixels();
-  assert.equal(pxAnotado.pix[4+4*128],1200,'A palavra fictícia DEMO está nos pixels');
-  const exportado=escreverCorte(comTexto,pxAnotado.pix,128,128,{
+  assert.equal(pxAnotado.pix[4+4*192],1200,'A palavra fictícia DEMO está nos pixels');
+  const exportado=escreverCorte(comTexto,pxAnotado.pix,192,224,{
     modalidade:'CT',uids:new MapaUID(),nomePseudo:'FANTOMA^DERIVADO',idPseudo:'AULA-SAIDA',metodoTxt:'TESTE DE CABECALHO'
   });
   const apenasCabecalho=new LeitorDICOM(exportado.buffer,'revisar.dcm'); await apenasCabecalho.ler(); apenasCabecalho.prepararTexto();
   assert.equal(apenasCabecalho.txt('00280301'),'YES');
-  assert.equal((await apenasCabecalho.lerPixels()).pix[4+4*128],1200,'A limpeza do cabeçalho não remove texto do pixel');
+  assert.equal((await apenasCabecalho.lerPixels()).pix[4+4*192],1200,'A limpeza do cabeçalho não remove texto do pixel');
   console.log('PASSOU: TC e RM sintéticas, 10 combinações de método, metadados, determinismo, DICOM e NIfTI.');
   console.log('PASSOU: texto fictício gravado nos pixels gera alerta e persiste após limpeza de cabeçalho.');
   if (process.argv.includes('--relatorio')) {

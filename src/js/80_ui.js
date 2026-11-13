@@ -737,7 +737,7 @@ function iniciar() {
 const LICOES = [
   { titulo: 'Olhar é o primeiro passo.', texto: 'Gire a reconstrução e compare os métodos. Uma face menos reconhecível não prova que o exame se tornou anônimo.', vista: 'd3', botao: 'Investigar cabeçalhos →' },
   { titulo: 'O nome não é o único identificador.', texto: 'Compare o cabeçalho original com o derivado. Veja o que foi removido e os quase-identificadores que permanecem. Texto gravado nos pixels exige revisão própria.', vista: 'hdr', botao: 'Medir a geometria →' },
-  { titulo: 'Mudança de forma não prova anonimização.', texto: 'Leia o deslocamento e a fração de superfície preservada. A anatomia simplificada do fantoma ensina o fluxo; não valida resultados em pacientes.', vista: 'met', botao: 'Voltar à imagem →' }
+  { titulo: 'Mudança de forma não prova anonimização.', texto: 'Leia o deslocamento e a fração de superfície preservada. A cabeça é modelada em 3D, com tecidos simulados; seu realismo visual não valida resultados em pacientes.', vista: 'met', botao: 'Voltar à imagem →' }
 ];
 function marcarEtapa(id) {
   for (const nome of ['etapaImportar', 'etapaRevisar', 'etapaExportar']) {
@@ -785,7 +785,7 @@ async function explorarExemplo() {
   if (E.ocupado) return;
   E.ocupado = true; atualizarControles();
   $('statusInicio').classList.remove('error');
-  msgR('Criando o fantoma sintético neste navegador…');
+  msgR('Construindo a cabeça sintética e os cortes neste navegador…');
   try {
     E.modalidade = E.modalidadeExemplo;
     E.yaw = 30; E.pitch = 0;

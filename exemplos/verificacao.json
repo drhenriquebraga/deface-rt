@@ -2,85 +2,85 @@
   "resultados": [
     {
       "modalidade": "CT",
-      "cortes": 112,
-      "bytesZIP": 3834714,
+      "cortes": 256,
+      "bytesZIP": 22397802,
       "medidas": [
         {
           "modalidade": "CT",
           "metodo": "plano",
           "limiar": -400,
-          "rms": 20.8,
-          "alterados": 2.52
+          "rms": 30.15,
+          "alterados": 1.21
         },
         {
           "modalidade": "CT",
           "metodo": "recorte",
           "limiar": -400,
-          "rms": 28.86,
-          "alterados": 4.39
+          "rms": 39.47,
+          "alterados": 3.82
         },
         {
           "modalidade": "CT",
           "metodo": "ruido",
           "limiar": -400,
-          "rms": 28.86,
-          "alterados": 4.39
+          "rms": 39.47,
+          "alterados": 3.82
         },
         {
           "modalidade": "CT",
           "metodo": "suave",
           "limiar": -400,
-          "rms": 1.87,
-          "alterados": 6.74
+          "rms": 31.53,
+          "alterados": 6.07
         },
         {
           "modalidade": "CT",
           "metodo": "generica",
           "limiar": -400,
-          "rms": 20.44,
-          "alterados": 4.42
+          "rms": 23.63,
+          "alterados": 4.22
         }
       ]
     },
     {
       "modalidade": "MR",
-      "cortes": 112,
-      "bytesZIP": 3834938,
+      "cortes": 256,
+      "bytesZIP": 22398314,
       "medidas": [
         {
           "modalidade": "MR",
           "metodo": "plano",
-          "limiar": 219,
-          "rms": 23.4,
-          "alterados": 2.3
+          "limiar": 414,
+          "rms": 31.58,
+          "alterados": 1.17
         },
         {
           "modalidade": "MR",
           "metodo": "recorte",
-          "limiar": 219,
-          "rms": 30.77,
-          "alterados": 4.69
+          "limiar": 414,
+          "rms": 43.2,
+          "alterados": 3.8
         },
         {
           "modalidade": "MR",
           "metodo": "ruido",
-          "limiar": 219,
-          "rms": 30.77,
-          "alterados": 4.69
+          "limiar": 414,
+          "rms": 43.2,
+          "alterados": 3.8
         },
         {
           "modalidade": "MR",
           "metodo": "suave",
-          "limiar": 219,
-          "rms": 5.99,
-          "alterados": 6.84
+          "limiar": 414,
+          "rms": 32.7,
+          "alterados": 6.04
         },
         {
           "modalidade": "MR",
           "metodo": "generica",
-          "limiar": 219,
-          "rms": 20.65,
-          "alterados": 4.71
+          "limiar": 414,
+          "rms": 25.33,
+          "alterados": 4.24
         }
       ]
     }

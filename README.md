@@ -9,7 +9,7 @@ Dois aplicativos locais e autocontidos do ecossistema radioterapia.ai:
 - **Data:** pseudonimize um texto ficticio, revise os identificadores que
   podem ter escapado e restaure os rotulos numa resposta simulada, sem IA.
 
-Versao **1.4.0**, 13/11/2026. Interface Estudio aprovada por Henrique Braga.
+Versao **1.4.1**, 13/11/2026. Interface Estudio aprovada por Henrique Braga.
 
 ## Comecar
 
@@ -23,6 +23,10 @@ para usa-los. O distintivo do cabecalho informa o resultado do teste de isolamen
 
 ## O que mudou
 
+- Cabeca humana modelada, com palpebras, labios, orelhas, mandibula e pescoco;
+  volume de 192 x 224 x 256 voxels de 1 mm e superficie 3D sem degraus de voxel.
+- Superficie MakeHuman CC0, com origem verificavel; tecidos e contrastes
+  TC/RM continuam inteiramente simulados, sem exame ou fotografia de pessoa.
 - Inicio educativo no lugar de visores vazios; exemplos e roteiro de exploracao.
 - Comparacao Original/Resultado com inspector lateral e detalhes sob demanda.
 - TC, RM e texto gerados localmente, sem dados de pacientes.
@@ -63,7 +67,9 @@ ajustes invalida o resultado; fechar ou limpar apaga o mapa.
 - Sequencias e tags privadas sao removidas integralmente, inclusive dados
   tecnicos legitimos. Arquivos com multiplas series requerem escolha cuidadosa.
 
-Os fantomas sao geometrias simplificadas. Os publicos nao tem nariz anatomico:
+Os exemplos embutidos usam uma cabeca modelada; sua aparencia nao torna os
+tecidos internos diagnosticamente corretos. Os dois fantomas publicos de
+CBCTsynth-RT continuam geometrias simplificadas e nao tem nariz anatomico:
 um detector pode produzir resultado aparentemente plausivel mesmo assim.
 Nenhum caso da colecao valida eficacia facial ou desempenho em pacientes.
 

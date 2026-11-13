@@ -4,7 +4,7 @@
    ========================================================================= */
 'use strict';
 
-const APP = { nome: 'DeFace RT', versao: '1.4.0', org: 'Radioterapia.AI' };
+const APP = { nome: 'DeFace RT', versao: '1.4.1', org: 'Radioterapia.AI' };
 
 /* Raiz de UID no arco 2.25 (UUID convertido em inteiro) — não exige registro
    junto à ISO, é a via prevista pelo DICOM PS3.5 para gerar UID sem OID próprio. */

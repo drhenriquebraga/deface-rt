@@ -40,7 +40,7 @@ def preparar(repo, programa, data):
                 inserir(p.relative_to(RAIZ).as_posix(), p.read_bytes())
     for nome in ('README.md','LICENSE','PRODUCT.md','DESIGN.md','entrega.txt',
                  'build/montar.py','build/fonts_b64.json','build/gerar_exemplos.js',
-                 'build/baixar_exemplos_publicos.py','build/auditar_segredos.py',
+                 'build/baixar_exemplos_publicos.py','build/preparar_anatomia.py','build/auditar_segredos.py',
                  'build/pacote_web.py','deploy/_headers','docs/VALIDACAO.md','docs/08_BIBLIOGRAFIA.md'):
         inserir(nome, (RAIZ/nome).read_bytes())
     if (RAIZ/'docs/AUDITORIA_PUBLICACAO.md').exists():
@@ -96,6 +96,8 @@ def preparar(repo, programa, data):
     mensagem = f'''Lucas e equipe de agentes,
 
 O DeFace RT foi atualizado para a versão {versao}, com o design Estúdio e foco educacional. A entrada agora oferece casos sintéticos de TC, RM e texto, com roteiro para comparar resultados, investigar cabeçalhos e compreender os limites da pseudonimização.
+
+O exemplo DICOM agora tem uma cabeça humana modelada, com pálpebras, lábios, orelhas e pescoço, em 256 cortes de 1 mm. A superfície vem de um asset MakeHuman CC0; os tecidos e intensidades são simulados. O visor representa o volume processado e preserva a mesma escala na comparação.
 
 Por favor, atualizem o card DeFace RT em Motores → Produtividade no radioterapia.ai. Na minipágina correspondente, usem estes destinos, abrindo em nova aba:
 
@@ -191,7 +193,7 @@ proteções HTTP, incluindo frame-ancestors. Não enfraqueça connect-src 'none'
     local = fragmento.replace(programa, '/deface/dicom/').replace(data, '/deface/data/')
     pagina = '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DeFace RT — aprender e explorar</title></head><body style="background:#081222;margin:0;font-family:system-ui,sans-serif">'+local+'</body></html>'
     pacote['site/deface/index.html'] = pagina.encode('utf-8')
-    for nome in ('bancos.log','navegador_dicom.log','navegador_data.log','auditoria.log'):
+    for nome in ('bancos.log','navegador_dicom.log','navegador_data.log','auditoria.log','render.log'):
         p = RAIZ/'dist/qa'/nome
         if p.exists():
             pacote['validacao/'+nome] = p.read_bytes()
